@@ -103,7 +103,7 @@
        (map #(.getName %))
        (filter #(re-find evdev-regexp %))
        (map filename->joystick-name)))
-(get-joystick-names device-paths)
+(comment (get-joystick-names device-paths))
 
 (defn search-path
   "Given a path and a regex, return a list of files that match the regex."
@@ -124,14 +124,14 @@
        (mapv file->symlink)))
 
 (defn symlink-target->evdev-info [symlink-target]
-  (let [evdev-id-path (by-path->by-id symlink-target)
+  (let [evdev-id-path       (by-path->by-id symlink-target)
         evdev-physical-path (by-id->by-path evdev-id-path)]
     {:evdev-id-path        evdev-id-path
      :evdev-physical-path  evdev-physical-path
      :evdev-symlink-target symlink-target}))
 
 (defn symlink-target->joydev-info [symlink-target]
-  (let [evdev-id-path (by-path->by-id symlink-target)
+  (let [evdev-id-path       (by-path->by-id symlink-target)
         evdev-physical-path (by-id->by-path evdev-id-path)]
     {:joydev-id-path        evdev-id-path
      :joydev-physical-path  evdev-physical-path
@@ -142,11 +142,12 @@
     (symlink-target->evdev-info symlink-target)
     (symlink-target->joydev-info symlink-target)))
 
-(symlink-target->evdev-info "/dev/input/event27")
-(comment (symlink-target->joydev-info "/dev/input/js1"))
 
-(symlink-target->info "/dev/input/event27")
-(symlink-target->info "/dev/input/js1")
+(comment (symlink-target->joydev-info "/dev/input/js1")
+         (symlink-target->evdev-info "/dev/input/event27"))
+
+(comment (symlink-target->info "/dev/input/event27")
+         (symlink-target->info "/dev/input/js1"))
 
 (defn join-evdev+joydev-info [evdev-info joydev-info]
   (let [name        (filename->joystick-name (:evdev-id-path evdev-info))
@@ -158,193 +159,79 @@
      :pci-address pci-address
      :usb-address usb-address}))
 
-(join-evdev+joydev-info example-evdev-info example-joydev-info)
-
-;; TODO:
-;; For each :target in the following code
-;;       call either symlink-target->evdev-info or symlink-target->joydev-info
-;;       Use evdev-path-regexp or joydev-path-regexp to determine which function to call
-;; We can use (get-joystick-names device-paths) to get a list of joystick names
-;; We must start with the by-id path to correlate names to joysticks; you can also use filename->joystick-name
-;;
-;; Then, merge all the results into a single map by Joystick name
-;; Note (join-evdev+joydev-info example-evdev-info example-joydev-info) WORKS
-(->> (search-path "/dev/input/by-id" #"VPC")
-     (map io/file)
-     (map file->symlink))
-
-(defn create-joystick-maps
-  "Creates the joystick maps, based on the evdev-devices and joydev-devices maps"
-  [evdev-devices joydev-devices]
-  (let [joystick-names (get-joystick-names device-paths)
-        evdev-infos    (map (fn [{:keys [target]}] (symlink-target->evdev-info target)) evdev-devices)
-        joydev-infos   (map (fn [{:keys [target]}] (symlink-target->joydev-info target)) joydev-devices)]
-    (reduce (fn [result joystick-name]
-              (let [evdev-info  (first (filter #(= joystick-name (filename->joystick-name (:evdev-id-path %))) evdev-infos))
-                    joydev-info (first (filter #(= joystick-name (filename->joystick-name (:joydev-id-path %))) joydev-infos))]
-                (assoc result joystick-name (join-evdev+joydev-info evdev-info joydev-info))))
-            {} joystick-names)))
-
 (defn all-symlinks []
   (->> (search-path "/dev/input/by-id" #"VPC")
        (map io/file)
        (map file->symlink)))
 
-(all-symlinks)
+(defn filter-symlinks-by-name [name symlinks]
+  (filter #(= name (filename->joystick-name (:link %))) symlinks))
 
-(defn group-all-symlinks-by-name []
-  (let [symlinks (all-symlinks)
-        names    (map filename->joystick-name (map :link symlinks))]
-    (reduce (fn [result name]
-              (let [symlinks-for-name (filter #(= name (filename->joystick-name (:link %))) symlinks)]
-                (assoc result name (:evdev symlinks-for-name))))
-            {} names)))
+(defn determine-joystick-type [symlink]
+  (if (str/includes? (:target symlink) "event") :evdev :joydev))
+
+(defn filter-and-group-symlinks [name symlinks]
+  (let [filtered-symlinks (filter #(= name (filename->joystick-name (:link %))) symlinks)]
+    (group-by determine-joystick-type filtered-symlinks)))
 
 (defn group-all-symlinks-by-name-and-type []
   (let [symlinks (all-symlinks)
         names    (map filename->joystick-name (map :link symlinks))]
     (reduce (fn [result name]
-              (let [symlinks-for-name (group-by (fn [symlink]
-                                                  (if (str/includes? (:target symlink) "event") :evdev :joydev))
-                                                (filter #(= name (filename->joystick-name (:link %))) symlinks))
-                    symlinks-for-name (into {} (map (fn [[k v]] {k (first v)}) symlinks-for-name))]
+              (let [grouped-symlinks  (filter-and-group-symlinks name symlinks)
+                    symlinks-for-name (into {} (map (fn [[k v]] {k (first v)}) grouped-symlinks))]
                 (assoc result name symlinks-for-name)))
             {} names)))
 
-
-
-
-
-
-;; Need to rewrite the previous function as it returns a list of maps, not a map of maps, which is what we want
-;; Need to go through each name and call symlink-target->joydev-info and symlink-target->evdev-info on each :target
-;; Depending on the path, we'll know which function to call use joydev-path-regexp or evdev-path-regexp against :target
-;; Then, we'll have a list of evdev-infos and joydev-infos that we can pass to join-evdev+joydev-info
-;; Make sure to do this for each name so we don't lose correlation
-;; Then, we can merge all the results into a single map by Joystick name
-;; Note (join-evdev+joydev-info example-evdev-info example-joydev-info) WORKS
-
-(group-all-symlinks-by-name)
-(group-all-symlinks-by-name-and-type)
-
-(reduce-kv (fn [result name symlinks]
-                             (let [symlink-targets (map :target symlinks)]
-                               (assoc result name symlink-targets)))
-                           {} (group-all-symlinks-by-name))
-
-
-(reduce-kv (fn [result name symlinks]
-             (let [symlink-targets (map :target symlinks)
-                   infos           (map symlink-target->info symlink-targets)
-                   sorted-infos    (sort-by #(if (str/includes? (:evdev-id-path %) "event") 0 1) infos)
-                   joined-info     (apply join-evdev+joydev-info sorted-infos)]
-               (assoc result name joined-info)))
-           {} (group-all-symlinks-by-name))
-
-(defn create-joystick-maps
-  "Creates the joystick maps, based on the evdev-devices and joydev-devices maps"
-  []
-  (let [joystick-names (get-joystick-names device-paths)
-        symlinks (group-all-symlinks-by-name)
-        evdev-joydev-infos (reduce-kv (fn [result name symlinks]
-                                        (let [symlink-targets (map :target symlinks)
-                                              infos           (map symlink-target->info symlink-targets)
-                                              sorted-infos    (sort-by #(if (str/includes? (:evdev-id-path %) "event") 0 1) infos)
-                                              joined-info     (apply join-evdev+joydev-info sorted-infos)]
-                                          (assoc result name joined-info)))
-                                      {} symlinks)]
-    evdev-joydev-infos))
-
-(create-joystick-maps)
-
-
-;; execute symlink-target->info
-
-(join-evdev+joydev-info example-evdev-info example-joydev-info)
-(reduce-kv (fn [result name symlinks]
-             (let [symlink-targets (map :target symlinks)
-                   infos           (map symlink-target->info symlink-targets)]
-               (assoc result name infos)))
-           {} (group-all-symlinks-by-name))
-(reduce-kv (fn [result name symlinks]
-             (let [symlink-targets (map :target symlinks)
-                   infos (map symlink-target->info symlink-targets)
-                   sorted-infos (sort-by #(if (str/includes? (:evdev-id-path %) "event") 0 1) infos)
-                   joined-info (apply join-evdev+joydev-info sorted-infos)]
-               (assoc result name joined-info)))
-           {} (group-all-symlinks-by-name))
+(defn get-single-joystick-info [name symlinks]
+  (let [evdev-info  (when-let [evdev-symlink (:evdev symlinks)]
+                      (symlink-target->evdev-info (:target evdev-symlink)))
+        joydev-info (when-let [joydev-symlink (:joydev symlinks)]
+                      (symlink-target->joydev-info (:target joydev-symlink)))
+        joined-info (when (and evdev-info joydev-info)
+                      (join-evdev+joydev-info evdev-info joydev-info))]
+    (when joined-info
+      (assoc joined-info :name name))))
 
 (defn get-joysticks-info []
   (let [symlinks-by-name-and-type (group-all-symlinks-by-name-and-type)
-        symlinks-info (map (fn [[name symlinks]]
-                             (let [evdev-info (when-let [evdev-symlink (:evdev symlinks)]
-                                                (symlink-target->evdev-info (:target evdev-symlink)))
-                                   joydev-info (when-let [joydev-symlink (:joydev symlinks)]
-                                                 (symlink-target->joydev-info (:target joydev-symlink)))
-                                   joined-info (when (and evdev-info joydev-info)
-                                                 (join-evdev+joydev-info evdev-info joydev-info))]
-                               (when joined-info
-                                 (assoc joined-info :name name))))
-                           symlinks-by-name-and-type)]
-    (remove nil? symlinks-info))) ; filter out joysticks that didn't have both evdev and joydev info
+        symlinks-info             (map (fn [[name symlinks]]
+                                         (get-single-joystick-info name symlinks))
+                                       symlinks-by-name-and-type)]
+    (remove nil? symlinks-info)))
 
-(get-joysticks-info)
+(defn transform-data
+  "This transforms the old data format to the new one.
+  KEK I could have used this, and it probably would have been
+  more efficient than the refactor, and saved me another 8 hours.
+  See core_backup.clj for the old code"
+  [input-data]
+  (map
+    (fn [[name data]]
+      (let [{:keys [evdev-path joydev-path]} data
+            {:keys [by-id by-path link usb-pci]} evdev-path
+            {:keys [pci usb]} usb-pci
+            {:keys [by-id by-path link]} joydev-path]
+        {:name        name
+         :evdev-info  {:evdev-id-path        by-id
+                       :evdev-physical-path  by-path
+                       :evdev-symlink-target link}
+         :joydev-info {:joydev-id-path        by-id
+                       :joydev-physical-path  by-path
+                       :joydev-symlink-target link}
+         :pci-address pci
+         :usb-address usb}))
+    input-data))
+(comment (def data (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))
+         (def data2 (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T23:14:08.453350096_joystick_device_map.edn"))
 
-;; Same thing but join the infos bas
-(group-all-symlinks-by-name)
-(map filename->joystick-name (map :link all-symlinks))
-(def evdev-symlinks (filter #(re-find evdev-path-regexp (:target %)) all-symlinks))
-(def joydev-symlinks (filter #(re-find joydev-path-regexp (:target %)) all-symlinks))
-(def evdev-infos (mapcat symlink-target->evdev-info (map :target evdev-symlinks)))
-(def joydev-infos (mapcat symlink-target->joydev-info (map :target joydev-symlinks)))
-(def info-pairs (mapcat (fn [evdev-info joydev-info]
-                          (join-evdev+joydev-info evdev-info joydev-info))
-                        evdev-infos joydev-infos))
-(pprint joydev-infos)
-(pprint info-pairs)
-(let [all-symlinks    (->> (search-path "/dev/input/by-id" #"VPC")
-                           (map io/file)
-                           (map file->symlink))
-      evdev-symlinks  (filter #(re-find evdev-path-regexp (:target %)) all-symlinks)
-      joydev-symlinks (filter #(re-find joydev-path-regexp (:target %)) all-symlinks)
-      evdev-infos     (map symlink-target->evdev-info (map :target evdev-symlinks))
-      joydev-infos    (map symlink-target->joydev-info (map :target joydev-symlinks))
-      matched-infos   (map (fn [evdev-info joydev-info] (join-evdev+joydev-info evdev-info joydev-info))
-                           evdev-infos joydev-infos)]
-  matched-infos)
+         (transform-data (read-string data2)))
 
-(comment (join-evdev+joydev-info example-evdev-info example-joydev-info)
-         {:name        "VPC_Throttle_MT-50CM3",
-          :evdev-info  {:evdev-id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick",
-                        :evdev-physical-path  "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-event-joystick",
-                        :evdev-symlink-target "/dev/input/event5"},
-          :joydev-info {:joydev-id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-joystick",
-                        :joydev-physical-path  "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick",
-                        :joydev-symlink-target "/dev/input/js1"},
-          :pci-address "0000:2c:00.1",
-          :usb-address "0:1.4.4:1.0"})
-(def group-all-symlinks-by-name (group-all-symlinks-by-name))
-
-(def evdev-infos (map (fn [symlinks] (map symlink-target->evdev-info (map :target symlinks))) (vals group-all-symlinks-by-name)))
-(def joydev-infos (map (fn [symlinks] (map symlink-target->joydev-info (map :target symlinks))) (vals group-all-symlinks-by-name)))
-(def matched-infos (map (fn [evdev-infos joydev-infos] (map (fn [evdev-info joydev-info] (join-evdev+joydev-info evdev-info joydev-info)) evdev-infos joydev-infos)) evdev-infos joydev-infos))
-(defn generate-joystick-map []
-  (let [grouped-symlinks-by-joystick-name (group-all-symlinks-by-name)
-        joystick-names                    (keys grouped-symlinks-by-joystick-name)
-        evdev-infos                       (map (fn [symlinks] (map symlink-target->evdev-info (map :target symlinks))) (vals grouped-symlinks-by-joystick-name))
-        joydev-infos                      (map (fn [symlinks] (map symlink-target->joydev-info (map :target symlinks))) (vals grouped-symlinks-by-joystick-name))
-        matched-infos                     (map (fn [evdev-infos joydev-infos] (map (fn [evdev-info joydev-info] (join-evdev+joydev-info evdev-info joydev-info)) evdev-infos joydev-infos)) evdev-infos joydev-infos)]
-    (reduce (fn [result joystick-name]
-              (let [joystick-matches
-                    (map (fn [evdev-info joydev-info]
-                           (join-evdev+joydev-info evdev-info joydev-info)) (first evdev-infos) (first joydev-infos))]
-                (assoc result joystick-name joystick-matches)))
-            {} joystick-names)))
 (defn -main
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
   [& args]
-  (let [joystick-map (generate-joystick-map)]
+  (let [joystick-map (get-joysticks-info)]
     (if (some #(= "-s" %) args)
       (let [timestamp (str (java.time.LocalDateTime/now))
             file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
