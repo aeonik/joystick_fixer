@@ -64,6 +64,7 @@
        (map #(.getAbsolutePath %))))
 
 (search-path-for-symlink "/dev/input/by-path" (reverse-symlink-lookup->symlink-map :by-id (io/file "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Stick_MT-50CM2_FF-event-joystick")))
+;; => ("/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.3:1.0-event-joystick")
 
 (defn get-by-path-from-by-id
   "Given a patch from the by-id directory, return the corresponding path from the by-path directory."
