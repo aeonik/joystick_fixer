@@ -1,0 +1,7 @@
+((nil . ((cljr-add-ns-to-blank-clj-files . t)
+         (cljr-favor-prefix-notation . t)
+         (cljr-favor-private-functions . nil)
+         (cljr-clojure-test-declaration "[clojure.test :refer [deftest testing is use-fixtures]]")
+         (cljr-magic-require-namespaces
+          . ("d"   . "datomic.api"
+             "pp"  . "clojure.pprint")))))
