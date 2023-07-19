@@ -90,11 +90,6 @@
        (.listFiles)
        (filter #(re-find regex (.getName %)))
        (map #(.getAbsolutePath %))))
-(->> (get-joystick-names device-paths)
-     (map re-pattern)
-     (map #(search-path (:by-id device-paths) %)))
-
-(pprint (search-path "/dev/input/by-path" #"event27"))
 
 (defn by-id->symlink-map
   "Given a regex, return a map of the path and the symlink it points to."
@@ -131,7 +126,16 @@
                                 [dev-type (assoc (second path-map) :by-path by-path :usb-pci usb-pci)])) v))])
          joystick-map)))
 
-(defn -main [& args]
-  (->> (get-joystick-info)
-       pprint))
+(defn -main
+  "If passed the -s argument, saves the output to a timestamped file in the resources directory.
+   Otherwise, simply pprint the output."
+  [& args]
+  (let [output (get-joystick-info)]
+    (if (some #(= "-s" %) args)
+      (let [timestamp (str (java.time.LocalDateTime/now))
+            file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
+        (spit file-name (with-out-str (clojure.pprint/pprint output))))
+      (clojure.pprint/pprint output))))
+
+
 
