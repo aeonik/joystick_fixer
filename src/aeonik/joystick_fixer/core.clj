@@ -3,7 +3,6 @@
             [clojure.string :as str]
             [clojure.pprint :refer [pprint]]
             [malli.core :as m])
-
   (:import (clojure.lang Keyword)
            (java.io File)
            [java.nio.file Files Paths]
@@ -11,27 +10,30 @@
            (org.apache.commons.io FileUtils)))
 
 (def evdev-regexp #"-event-joystick$")
-(def joydev-regexp #"-joystic")
+(def joydev-regexp #"FF-joystick$")
 (def evdev-path-regexp #"event\d+$")
 (def joydev-path-regexp #"js\d+$")
 (def device-paths {:by-id   "/dev/input/by-id"
                    :by-path "/dev/input/by-path"})
-
 (def joystick-name-regexp #"VPC")
 (def extract-name-rexexp #"usb-VIRPIL_Controls_20220720_(.*?)_FF(-event)?-joystick")
 (def extract-pci-regexp #"pci-(.*?)-usb-")
 (def extract-usb-regexp #"usb-(.*?)-")
-
 (def example-joystick-names ["L-VPC_Stick_MT-50CM2" "VPC_SharKa-50_Panel" "VPC_Throttle_MT-50CM3" "VPC_Stick_MT-50CM2"])
 
 (defrecord evdev-info [evdev-id-path evdev-physical-path evdev-symlink-target])
-(def example-evdev-info {:evdev-id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick"
-                         :evdev-physical-path  "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-event-joystick"
-                         :evdev-symlink-target "/dev/input/event5"})
+(def example-evdev-info {:id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick"
+                         :physical-path  "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-event-joystick"
+                         :symlink-target "/dev/input/event5"})
 (defrecord joydev-info [joydev-id-path joydev-physical-path joydev-symlink-target])
-(def example-joydev-info {:joydev-id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-joystick"
-                          :joydev-physical-path  "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick"
-                          :joydev-symlink-target "/dev/input/js1"})
+(def example-joydev-info {:id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-joystick"
+                          :physical-path  "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick"
+                          :symlink-target "/dev/input/js1"})
+(def example-joystick-map {:name        "VPC Throttle MT-50CM3"
+                           :evdev-info  example-evdev-info
+                           :joydev-info example-joydev-info
+                           :pci-address "0000:2c:00.1"
+                           :usb-address "0:1.4.4:1.0"})
 (defrecord joystick-map [name evdev-info joydev-info pci-address usb-address])
 
 (defn deep-merge
@@ -44,36 +46,43 @@
 (defn symlink->target
   "Given a symlink, return the real path of the target file it points to."
   [^File symlink]
-  (^String -> symlink .getCanonicalFile .toString))
+  (-> symlink
+      .getCanonicalFile
+      .toString))
 
 (comment (symlink->target (io/file "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick")))
 
 (defn filename->joystick-name
   "Given a file name, return the joystick name."
   [^String file-name]
-  (^String second (re-find extract-name-rexexp file-name)))
+  (second (re-find extract-name-rexexp file-name)))
+
+(comment (filename->joystick-name "usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick"))
 
 (defn file->symlink
-  "Given a key (:by-id or :by-path in this app) and a path, return a map of the
-   path and the symlink it points to."
+  "Given a file, return a map of the link and the target it points to.
+  {:link /dev/input/by-id/{symlink} :target /dev/input/{target}}"
   [^File path]
   {:link (.toString path) :target (symlink->target path)})
 
 (comment (file->symlink (io/file "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick")))
 
 (defn split-usb-pci [^String path]
+  "Given a path in /dev/input/by-path, return the pci and usb addresses."
   {:pci-address (second (re-find #"pci-(.*?)-usb" path))
    :usb-address (second (re-find #"usb-(.*?)-" path))})
 
 (defn get-corresponding-path
-  "Given a directory and a target file, return the corresponding path from the directory.
-  Scans the directory for symlinks that point to the target file."
+  "Given a directory and a symlink, return the corresponding symlink that points to the same target.
+  Aka, you have two symlinks that point to the same target
+  This function lets you look up the other symlink, given the directory.
+  /dev/input/by-id/{symlink} -> /dev/input/by-path/{symlink} or vice versa."
   [^String directory {:keys [target]}]
   (->> (io/file directory)
        (.listFiles)
        (filter #(= (symlink->target %) target))
        (map #(.getAbsolutePath %))
-       (first)))                                            ; Convert the sequence to a list
+       (first)))
 
 (defn by-id->by-path
   "Given a file  from the /dev/inputs/by-id directory, return the corresponding path from the by-path directory."
@@ -115,13 +124,22 @@
 
 (comment (search-path "/dev/input/by-id" #"VPC"))
 
-;; Extract names, and add it to the root of each relevant node on the merged-id-path-map
 (defn regex-search->id-symlinks
   "Given a regex, return a map of the path and the symlink it points to."
   [^Pattern regex]
   (->> (search-path "/dev/input/by-id" regex)
        (map io/file)
        (mapv file->symlink)))
+
+(comment (regex-search->id-symlinks #"VPC"))
+
+(defn correlate-joystick-name [joystick-name]
+  {:name   joystick-name
+   :evdev  (first (regex-search->id-symlinks (re-pattern (str joystick-name ".*" evdev-regexp))))
+   :joydev (first (regex-search->id-symlinks (re-pattern (str joystick-name ".*" joydev-regexp))))})
+
+(first (regex-search->id-symlinks (re-pattern (str "VPC" ".*" joydev-regexp))))
+(comment (into {} (mapv correlate-joystick-name example-joystick-names)))
 
 (defn symlink-target->evdev-info [symlink-target]
   (let [evdev-id-path       (by-path->by-id symlink-target)
@@ -142,7 +160,6 @@
     (symlink-target->evdev-info symlink-target)
     (symlink-target->joydev-info symlink-target)))
 
-
 (comment (symlink-target->joydev-info "/dev/input/js1")
          (symlink-target->evdev-info "/dev/input/event27"))
 
@@ -159,46 +176,17 @@
      :pci-address pci-address
      :usb-address usb-address}))
 
-(defn all-symlinks []
-  (->> (search-path "/dev/input/by-id" #"VPC")
-       (map io/file)
-       (map file->symlink)))
+(comment (join-evdev+joydev-info (symlink-target->evdev-info "/dev/input/event27") (symlink-target->joydev-info "/dev/input/js1")))
 
-(defn filter-symlinks-by-name [name symlinks]
-  (filter #(= name (filename->joystick-name (:link %))) symlinks))
+(defn get-joystick-info [correlated-joystick-map]
+  "Takes input from the correlate-joystick-name function and returns a map of the joystick info."
+  (let [joystick-map  correlated-joystick-map
+        evdev-target  (get-in joystick-map [:evdev :target])
+        joydev-target (get-in joystick-map [:joydev :target])]
+    (join-evdev+joydev-info (symlink-target->evdev-info evdev-target) (symlink-target->joydev-info joydev-target))))
 
-(defn determine-joystick-type [symlink]
-  (if (str/includes? (:target symlink) "event") :evdev :joydev))
-
-(defn filter-and-group-symlinks [name symlinks]
-  (let [filtered-symlinks (filter #(= name (filename->joystick-name (:link %))) symlinks)]
-    (group-by determine-joystick-type filtered-symlinks)))
-
-(defn group-all-symlinks-by-name-and-type []
-  (let [symlinks (all-symlinks)
-        names    (map filename->joystick-name (map :link symlinks))]
-    (reduce (fn [result name]
-              (let [grouped-symlinks  (filter-and-group-symlinks name symlinks)
-                    symlinks-for-name (into {} (map (fn [[k v]] {k (first v)}) grouped-symlinks))]
-                (assoc result name symlinks-for-name)))
-            {} names)))
-
-(defn get-single-joystick-info [name symlinks]
-  (let [evdev-info  (when-let [evdev-symlink (:evdev symlinks)]
-                      (symlink-target->evdev-info (:target evdev-symlink)))
-        joydev-info (when-let [joydev-symlink (:joydev symlinks)]
-                      (symlink-target->joydev-info (:target joydev-symlink)))
-        joined-info (when (and evdev-info joydev-info)
-                      (join-evdev+joydev-info evdev-info joydev-info))]
-    (when joined-info
-      (assoc joined-info :name name))))
-
-(defn get-joysticks-info []
-  (let [symlinks-by-name-and-type (group-all-symlinks-by-name-and-type)
-        symlinks-info             (map (fn [[name symlinks]]
-                                         (get-single-joystick-info name symlinks))
-                                       symlinks-by-name-and-type)]
-    (remove nil? symlinks-info)))
+(defn process-all-joysticks []
+  (sort-by :name (mapv get-joystick-info (map correlate-joystick-name (get-joystick-names device-paths)))))
 
 (defn transform-data
   "This transforms the old data format to the new one.
@@ -227,11 +215,13 @@
 
          (transform-data (read-string data2)))
 
+(comment (process-all-joysticks))
+
 (defn -main
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
   [& args]
-  (let [joystick-map (get-joysticks-info)]
+  (let [joystick-map (process-all-joysticks)]
     (if (some #(= "-s" %) args)
       (let [timestamp (str (java.time.LocalDateTime/now))
             file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
