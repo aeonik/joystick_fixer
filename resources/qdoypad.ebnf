@@ -1,0 +1,7 @@
+file = header joystick+
+      joystick = joystick_number key_map+
+      joystick_number = "Joystick" number
+      key_map = joystick_button key
+      joystick_button = "Button" number
+      key = "key" number
+      number = \#'[0-9]+'

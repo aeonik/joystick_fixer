@@ -7,6 +7,7 @@
          metosin/malli {:mvn/version "0.11.0"}
          ubergraph/ubergraph {:mvn/version "0.8.2"}
          org.clojars.quoll/asami {:mvn/version "2.3.3"}
+         instaparse/instaparse {:mvn/version "1.4.12"}
          }
 
  :aliases {:dev {:classpath-overrides {org.clojure/clojure nil} ;; for disabling the official compiler
