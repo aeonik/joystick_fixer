@@ -7,12 +7,11 @@
             [clojure.pprint :refer [pprint]]
             [malli.core :as m]
             [ubergraph.core :as g])
-
   (:import [java.nio.file Files Paths]
            (org.apache.commons.io FileUtils)))
 
 
-(def "~/qjoypad_virpils.lyt")
+(def file "~/qjoypad_virpils.lyt")
 
 ;; Define a schema for a joystick.
 (def joystick-schema
@@ -48,7 +47,9 @@
                    <tab> = #'\\t'
                    <joystick_number> = number
                    <number> = #'[0-9]+'")
-(def qjoypad-parser (instaparse/parser qjoypad-ebnf :output-format :enlive))
+(def qjoypad-parser (instaparse/parser qjoypad-ebnf :output-format :hiccup))
+
+
 
 (combinators/ebnf qjoypad-ebnf)
 (def qjoypad-grammar-combinator
@@ -93,7 +94,6 @@
 (def qjoypad-parser-combinator (instaparse/parser qjoypad-grammar-combinator :start :file :output-format :enlive))
 
 (def transformations
-  "Can be to remap the entire structure to a map."
   {:file            (fn [header & joysticks] {:header header, :joysticks joysticks})
    :joystick        (fn [number & key_maps] {:joystick-number number, :key-maps key_maps})
    :key_map         (fn [joystick-button & types] {:joystick-button joystick-button, :types types})
@@ -101,44 +101,52 @@
    :type            (fn [type-name & type-buttons] {:type-name type-name, :type-buttons type-buttons})
    :type_button     (fn [number] {:type-button-number number})})
 
+(def transformations2
+  {:file            (fn [& [header & joysticks]] {:header header, :joysticks joysticks})
+   :joystick        (fn [& [number & key_maps]] {:joystick-number number, :key-maps key_maps})
+   :key_map         (fn [& [joystick-button & types]] {:joystick-button joystick-button, :types types})
+   :joystick_button (fn [& [number]] {:button-number number})
+   :type            (fn [& [type-name & type-buttons]] {:type-name type-name, :type-buttons type-buttons})
+   :type_button     (fn [& [number]] {:type-button-number number})})
+
+
+(defn parse-qjoypad
+  [file & {:as options}]
+  (let [default-options {:grammar qjoypad-ebnf :output-format :hiccup}
+        all-options (merge default-options options)
+        grammar (get all-options :grammar)
+        parse-options (select-keys all-options [:unhide]) ; select other keys if needed
+        parser-options (dissoc all-options :unhide) ; remove keys passed to parse
+        parser (instaparse/parser grammar parser-options)]
+    (instaparse/parse parser file parse-options)))
+
+(parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive)
+(parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive :unhide :all)
+
+
+
 (def parse-tree (instaparse/parse qjoypad-parser file :unhide :all))
 (def parse-tree-combinator (instaparse/parse qjoypad-parser-combinator file :unhide :all))
 
-(instaparse/transform transformations parse-tree)
+(instaparse/transform transformations2 parse-tree)
 
-(defn concatenate-tree
-  "Unparses the tree"
+(comment (-> file
+    (instaparse/parse qjoypad-parser)
+    (instaparse/transform transformations)))
+
+(defn serialize-parse-tree
+  "Unparses the tree
+  This function currently requires enlive format"
   [tree]
   (cond
-    (map? tree) (concatenate-tree (get tree :content))
-    (coll? tree) (reduce str (map concatenate-tree tree))
+    (map? tree) (serialize-parse-tree (get tree :content))
+    (coll? tree) (reduce str (map serialize-parse-tree tree))
     :else tree))
 
-(def unparsed-tree (concatenate-tree parse-tree))
+(def unparsed-tree (serialize-parse-tree parse-tree))
 
 ;; Compare strings
 (= file unparsed-tree)
-
-(comment [:file
-          [:header "# QJoyPad 4.3 Layout File"]
-          [:joystick
-           "4"
-           [:key_map [:joystick_button "22"] [:type "key" [:type_button "67"]]]
-           [:key_map [:joystick_button "30"] [:type "key" [:type_button "64"]]]]
-          [:joystick "1"]
-          [:joystick "3"]
-          [:joystick
-           "2"
-           [:key_map [:joystick_button "27"] [:type "key" [:type_button "34"]]]
-           [:key_map [:joystick_button "28"] [:type "key" [:type_button "35"]]]]
-          [:joystick
-           "5"
-           [:key_map [:joystick_button "3"] [:type "mouse" [:type_button "1"]]]
-           [:key_map [:joystick_button "4"] [:type "mouse" [:type_button "3"]]]
-           [:key_map [:joystick_button "30"] [:type "key" [:type_button "41"]]]
-           [:key_map [:joystick_button "39"] [:type "key" [:type_button "67"]]]
-           [:key_map [:joystick_button "40"] [:type "key" [:type_button "68"]]]]])
-
 
 ;; Trying to come up with a way to transform arbitrary grammars
 (defn transform-joystick [joystick-transforms tree]
@@ -165,7 +173,7 @@
                 "replacement text"))
 
 
-(defn replace-joystick-numbers-in-text [text parse-tree]
+(comment (defn replace-joystick-numbers-in-text [text parse-tree]
   (let [replacement-ranges (->> parse-tree
                                 (tree-seq vector? seq)
                                 (filter #(= :joystick_number (first %)))
@@ -178,7 +186,7 @@
                           sorted-ranges)
         parts (map (fn [[start end]] (subs text start end))
                    (partition 2 1 (interleave (cons 0 (map second sorted-ranges)) (cons (dec (count text)) nil))))]
-    (apply str (interleave parts replacements))))
+    (apply str (interleave parts replacements)))))
 
 
 ;; Print with metadata
@@ -190,10 +198,8 @@
 (get-in parse-tree [2])
 (meta (get-in parse-tree [2]))
 
+(comment
+  (instaparse/span parse-tree)
 
-(instaparse/span parse-tree)
-
-(instaparse/add-line-and-column-info-to-metadata file parse-tree)
-(def annotated-tree (instaparse/add-line-and-column-info-to-metadata file parse-tree))
-
-(instaparse/unparse)
+  (instaparse/add-line-and-column-info-to-metadata file parse-tree)
+  (def annotated-tree (instaparse/add-line-and-column-info-to-metadata file parse-tree)))
