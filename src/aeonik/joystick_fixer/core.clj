@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.pprint :refer [pprint]]
+            [clojure.tools.reader.edn :as edn]
             [malli.core :as m])
   (:import (clojure.lang Keyword)
            (java.io File)
@@ -188,6 +189,17 @@
 (defn process-all-joysticks []
   (sort-by :name (mapv get-joystick-info (map correlate-joystick-name (get-joystick-names device-paths)))))
 
+(defn sort-joysticks [joystick-map]
+  (sort-by :name joystick-map))
+
+(def temp-file (process-all-joysticks))
+(def temp-file2 (read-string (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn")))
+
+(defn sort-joysticks [joystick-map]
+  (sorted-map joystick-map))
+
+(into (sorted-map) temp-file)
+
 (defn transform-data
   "This transforms the old data format to the new one.
   KEK I could have used this, and it probably would have been
@@ -216,6 +228,27 @@
          (transform-data (read-string data2)))
 
 (comment (process-all-joysticks))
+
+(defn simple-replace [^String input ^String old ^String new]
+  (str/replace input (re-pattern old) new))
+
+"   <rebind input=\"js1_button12\"/>\n"
+"   <rebind input=\"js2_button41\"/>\n"
+"   <rebind input=\"js3_button50\"/>\n"
+
+" <options type=\"joystick\" instance=\"1\" Product=\"VIRPIL Controls 20220720 VPC Stick MT-50CM2  {012F3344-0000-0000-0000-504944564944}\">\n"
+" <options type=\"joystick\" instance=\"2\" Product=\"VIRPIL Controls 20220720 VPC Throttle MT-50CM3  {01973344-0000-0000-0000-504944564944}\">\n"
+" <options type=\"joystick\" instance=\"3\" Product=\"VIRPIL Controls 20220720 VPC SharKa-50 Panel  {025D3344-0000-0000-0000-504944564944}\"/>\n"
+(def xml-replace {:input #"input=\"js(\\d)"
+                  :options #"<options type=\"joystick\" instance=(\\d) Product=\"(.*?)\""})
+
+(def joystick-tranforms {1 2
+                         2 3
+                         3 1
+                         4 4})
+(defn remap-joystick-nums [xml-string]
+  )
+
 
 (defn -main
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.

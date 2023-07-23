@@ -120,7 +120,7 @@
         parser (instaparse/parser grammar parser-options)]
     (instaparse/parse parser file parse-options)))
 
-(parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive)
+(parse-qjoypad file :grammar qjoypad-ebnf :output-format :hiccup)
 (parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive :unhide :all)
 
 
