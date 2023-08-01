@@ -11,6 +11,7 @@
          instaparse/instaparse {:mvn/version "1.4.12"}
          org.clj-commons/digest {:mvn/version "1.4.100"}
          tupelo/tupelo {:mvn/version "23.07.04"}
+         babashka/fs {:mvn/version "0.4.19"}
          }
 
  :aliases {:dev {:classpath-overrides {org.clojure/clojure nil} ;; for disabling the official compiler

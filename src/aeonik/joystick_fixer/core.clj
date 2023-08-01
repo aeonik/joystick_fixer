@@ -88,12 +88,12 @@
 (defn by-id->by-path
   "Given a file  from the /dev/inputs/by-id directory, return the corresponding path from the by-path directory."
   [^String by-id-file]
-  (get-corresponding-path "/dev/input/by-path" (file->symlink (io/file by-id-file))))
+  (get-corresponding-path (:by-path device-paths) (file->symlink (io/file by-id-file))))
 
 (defn by-path->by-id
   "Given a file from the /dev/inputs/by-path directory, return the corresponding path from the by-id directory."
   [^String by-path-file]
-  (get-corresponding-path "/dev/input/by-id" (file->symlink (io/file by-path-file))))
+  (get-corresponding-path (:by-id device-paths) (file->symlink (io/file by-path-file))))
 
 (comment (by-path->by-id "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick"))
 (comment (by-id->by-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick"))
@@ -128,7 +128,7 @@
 (defn regex-search->id-symlinks
   "Given a regex, return a map of the path and the symlink it points to."
   [^Pattern regex]
-  (->> (search-path "/dev/input/by-id" regex)
+  (->> (search-path (:by-id device-paths) regex)
        (map io/file)
        (mapv file->symlink)))
 
