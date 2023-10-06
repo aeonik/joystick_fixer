@@ -1,21 +1,26 @@
-{:paths ["src" "resources"]
- :deps  {org.clojure/clojure   {:mvn/version "1.11.1"}
-         org.clojure/tools.cli {:mvn/version "RELEASE"}
-         org.clojure/tools.reader {:mvn/version "1.3.6"}
-         org.clojure/tools.analyzer.jvm {:mvn/version "1.2.2"}
-         org.clojure/data.xml {:mvn/version "0.2.0-alpha8"}
-         commons-io/commons-io {:mvn/version "2.11.0"}
-         metosin/malli {:mvn/version "0.11.0"}
-         ubergraph/ubergraph {:mvn/version "0.8.2"}
-         org.clojars.quoll/asami {:mvn/version "2.3.3"}
-         instaparse/instaparse {:mvn/version "1.4.12"}
-         org.clj-commons/digest {:mvn/version "1.4.100"}
-         tupelo/tupelo {:mvn/version "23.07.04"}
-         babashka/fs {:mvn/version "0.4.19"}
-         }
+{:paths   ["src" "resources"]
+ :deps    {org.clojure/clojure            {:mvn/version "1.11.1"}
+           org.clojure/tools.cli          {:mvn/version "RELEASE"}
+           org.clojure/tools.reader       {:mvn/version "1.3.6"}
+           org.clojure/tools.analyzer.jvm {:mvn/version "1.2.2"}
+           org.clojure/data.xml           {:mvn/version "0.2.0-alpha8"}
+           commons-io/commons-io          {:mvn/version "2.11.0"}
+           metosin/malli                  {:mvn/version "0.11.0"}
+           ubergraph/ubergraph            {:mvn/version "0.8.2"}
+           org.clojars.quoll/asami        {:mvn/version "2.3.3"}
+           instaparse/instaparse          {:mvn/version "1.4.12"}
+           org.clj-commons/digest         {:mvn/version "1.4.100"}
+           tupelo/tupelo                  {:mvn/version "23.07.04"}
+           babashka/fs                    {:mvn/version "0.4.19"}
+           thomasa/morpheus               {:git/url "https://github.com/benedekfazekas/morpheus.git"
+                                           :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}
+           }
 
- :aliases {:dev {:classpath-overrides {org.clojure/clojure nil} ;; for disabling the official compiler
-                 :extra-deps {com.github.jpmonettas/clojure {:mvn/version "RELEASE"}
-                              com.github.jpmonettas/flow-storm-dbg {:mvn/version "RELEASE"}}
-                 :jvm-opts ["-Dclojure.storm.instrumentEnable=true"
-                            "-Dclojure.storm.instrumentOnlyPrefixes=aeonik.joystick-fixer.core"]}}}
+ :aliases {:dev      {:classpath-overrides {org.clojure/clojure nil} ;; for disabling the official compiler
+                      :extra-deps          {com.github.jpmonettas/clojure        {:mvn/version "RELEASE"}
+                                            com.github.jpmonettas/flow-storm-dbg {:mvn/version "RELEASE"}}
+                      :jvm-opts            ["-Dclojure.storm.instrumentEnable=true"
+                                            "-Dclojure.storm.instrumentOnlyPrefixes=aeonik.joystick-fixer.core"]}
+           :morpheus {:extra-deps {thomasa/morpheus {:git/url "https://github.com/benedekfazekas/morpheus.git"
+                                                     :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}}
+                      :main-opts  ["-m" "thomasa.morpheus.main"]}}}
