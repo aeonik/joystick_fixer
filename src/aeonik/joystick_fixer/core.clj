@@ -18,8 +18,8 @@
                    :by-path "/dev/input/by-path"})
 (def joystick-name-regexp #"VPC")
 (def extract-name-rexexp #"usb-VIRPIL_Controls_20220720_(.*?)_FF(-event)?-joystick")
-(def extract-pci-regexp #"pci-(.*?)-usb-")
-(def extract-usb-regexp #"usb-(.*?)-")
+(def extract-pci-regexp #"pci-(.*?)-usbv?\d*-")
+(def extract-usb-regexp #"usbv?\d*-(.*?)-")
 (def example-joystick-names ["L-VPC_Stick_MT-50CM2" "VPC_SharKa-50_Panel" "VPC_Throttle_MT-50CM3" "VPC_Stick_MT-50CM2"])
 
 (defrecord evdev-info [evdev-id-path evdev-physical-path evdev-symlink-target])
@@ -70,8 +70,8 @@
 
 (defn split-usb-pci [^String path]
   "Given a path in /dev/input/by-path, return the pci and usb addresses."
-  {:pci-address (second (re-find #"pci-(.*?)-usb" path))
-   :usb-address (second (re-find #"usb-(.*?)-" path))})
+  {:pci-address (second (re-find extract-pci-regexp path))
+   :usb-address (second (re-find extract-usb-regexp path))})
 
 (defn get-corresponding-path
   "Given a directory and a symlink, return the corresponding symlink that points to the same target.
@@ -187,7 +187,29 @@
     (join-evdev+joydev-info (symlink-target->evdev-info evdev-target) (symlink-target->joydev-info joydev-target))))
 
 (defn process-all-joysticks []
-  (sort-by :name (mapv get-joystick-info (map correlate-joystick-name (get-joystick-names device-paths)))))
+  (->> device-paths
+       get-joystick-names
+       (map correlate-joystick-name)
+       (mapv get-joystick-info)
+       (sort-by :name)))
+
+(defn promote-children [joystick-map]
+  (let [evdev-info (get joystick-map :evdev-info {})
+        joydev-info (get joystick-map :joydev-info {})]
+    (-> joystick-map
+        (dissoc :evdev-info :joydev-info)
+        (merge evdev-info joydev-info))))
+
+(defn promote-and-order [joystick-map]
+  (let [name {:name (get joystick-map :name)}
+        without-name (dissoc joystick-map :name)
+        evdev-info (get without-name :evdev-info {})
+        joydev-info (get without-name :joydev-info {})]
+    (-> without-name
+        (dissoc :evdev-info :joydev-info)
+        (merge evdev-info joydev-info)
+        (merge name))))
+
 
 (defn sort-joysticks [joystick-map]
   (sort-by :name joystick-map))
@@ -222,6 +244,7 @@
          :pci-address pci
          :usb-address usb}))
     input-data))
+
 (comment (def data (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))
          (def data2 (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T23:14:08.453350096_joystick_device_map.edn"))
 
