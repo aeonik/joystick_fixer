@@ -37,6 +37,13 @@
                            :usb-address "0:1.4.4:1.0"})
 (defrecord joystick-map [name evdev-info joydev-info pci-address usb-address])
 
+(defn read-edn-file [file-path]
+  (with-open [rdr (clojure.java.io/reader file-path)]
+    (edn/read-string (slurp rdr))))
+(defn write-edn-file [file-path data]
+  (spit file-path (prn-str data)))
+
+
 (defn deep-merge
   "Recursively merges maps."
   [& maps]
@@ -211,8 +218,8 @@
         (merge name))))
 
 
-(defn sort-joysticks [joystick-map]
-  (sort-by :name joystick-map))
+(comment (defn sort-joysticks [joystick-map]
+           (sort-by :name joystick-map)))
 
 (def temp-file (process-all-joysticks))
 (def temp-file2 (read-string (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn")))
@@ -220,7 +227,7 @@
 (defn sort-joysticks [joystick-map]
   (sorted-map joystick-map))
 
-(into (sorted-map) temp-file)
+(comment (into (sorted-map) temp-file))
 
 (defn transform-data
   "This transforms the old data format to the new one.
@@ -244,6 +251,21 @@
          :pci-address pci
          :usb-address usb}))
     input-data))
+
+
+(defn update-usb-address
+  "This function is needed to fix the usb-address field in the data due to regex changes."
+  [entry]
+  (let [evdev-path (get-in entry [:evdev-info :evdev-id-path])
+        joydev-path (get-in entry [:joydev-info :joydev-id-path])
+        usb-address (or (re-find extract-usb-regexp evdev-path)
+                        (re-find extract-usb-regexp joydev-path))]
+    (assoc entry :usb-address (second usb-address))))
+
+(defn process-files-usb-fix [file-path]
+  (let [data (read-edn-file file-path)
+        updated-data (map update-usb-address data)]
+    (write-edn-file file-path updated-data)))
 
 (comment (def data (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))
          (def data2 (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T23:14:08.453350096_joystick_device_map.edn"))
