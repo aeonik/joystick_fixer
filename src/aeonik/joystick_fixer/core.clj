@@ -1,5 +1,6 @@
 (ns aeonik.joystick-fixer.core
   (:require [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.pprint :refer [pprint]]
             [clojure.tools.reader.edn :as edn]
@@ -40,8 +41,9 @@
 (defn read-edn-file [file-path]
   (with-open [rdr (clojure.java.io/reader file-path)]
     (edn/read-string (slurp rdr))))
-(defn write-edn-file [file-path data]
-  (spit file-path (prn-str data)))
+(defn write-edn-file! [file-path data]
+  (spit file-path (binding [clojure.pprint/*print-right-margin* 200]
+                    (with-out-str (pprint/pprint data)))))
 
 
 (defn deep-merge
@@ -201,17 +203,17 @@
        (sort-by :name)))
 
 (defn promote-children [joystick-map]
-  (let [evdev-info (get joystick-map :evdev-info {})
+  (let [evdev-info  (get joystick-map :evdev-info {})
         joydev-info (get joystick-map :joydev-info {})]
     (-> joystick-map
         (dissoc :evdev-info :joydev-info)
         (merge evdev-info joydev-info))))
 
 (defn promote-and-order [joystick-map]
-  (let [name {:name (get joystick-map :name)}
+  (let [name         {:name (get joystick-map :name)}
         without-name (dissoc joystick-map :name)
-        evdev-info (get without-name :evdev-info {})
-        joydev-info (get without-name :joydev-info {})]
+        evdev-info   (get without-name :evdev-info {})
+        joydev-info  (get without-name :joydev-info {})]
     (-> without-name
         (dissoc :evdev-info :joydev-info)
         (merge evdev-info joydev-info)
@@ -221,8 +223,9 @@
 (comment (defn sort-joysticks [joystick-map]
            (sort-by :name joystick-map)))
 
-(def temp-file (process-all-joysticks))
-(def temp-file2 (read-string (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn")))
+(comment
+  (def temp-file (process-all-joysticks))
+  (def temp-file2 (read-string (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))))
 
 (defn sort-joysticks [joystick-map]
   (sorted-map joystick-map))
@@ -252,20 +255,27 @@
          :usb-address usb}))
     input-data))
 
-
 (defn update-usb-address
   "This function is needed to fix the usb-address field in the data due to regex changes."
   [entry]
-  (let [evdev-path (get-in entry [:evdev-info :evdev-id-path])
-        joydev-path (get-in entry [:joydev-info :joydev-id-path])
-        usb-address (or (re-find extract-usb-regexp evdev-path)
-                        (re-find extract-usb-regexp joydev-path))]
-    (assoc entry :usb-address (second usb-address))))
+  (let [evdev-physical-path (get-in entry [:evdev-info :evdev-physical-path])
+        joydev-physical-path (get-in entry [:joydev-info :joydev-physical-path])
+        usb-address (or (-> (split-usb-pci evdev-physical-path) :usb-address)
+                        (-> (split-usb-pci joydev-physical-path) :usb-address))]
+    (assoc entry :usb-address usb-address)))
 
-(defn process-files-usb-fix [file-path]
-  (let [data (read-edn-file file-path)
+(defn process-files-usb-fix! [file-path]
+  (let [data         (read-edn-file file-path)
         updated-data (map update-usb-address data)]
-    (write-edn-file file-path updated-data)))
+    (write-edn-file! file-path updated-data)))
+
+(defn list-edn-files []
+  (filter #(re-matches #".*_joystick_device_map\.edn$" (.getPath %))
+          (file-seq (clojure.java.io/file "resources"))))
+
+(defn update-all-files! []
+  (doseq [file (list-edn-files)]
+    (process-files-usb-fix! (.getPath file))))
 
 (comment (def data (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))
          (def data2 (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T23:14:08.453350096_joystick_device_map.edn"))
@@ -284,7 +294,7 @@
 " <options type=\"joystick\" instance=\"1\" Product=\"VIRPIL Controls 20220720 VPC Stick MT-50CM2  {012F3344-0000-0000-0000-504944564944}\">\n"
 " <options type=\"joystick\" instance=\"2\" Product=\"VIRPIL Controls 20220720 VPC Throttle MT-50CM3  {01973344-0000-0000-0000-504944564944}\">\n"
 " <options type=\"joystick\" instance=\"3\" Product=\"VIRPIL Controls 20220720 VPC SharKa-50 Panel  {025D3344-0000-0000-0000-504944564944}\"/>\n"
-(def xml-replace {:input #"input=\"js(\\d)"
+(def xml-replace {:input   #"input=\"js(\\d)"
                   :options #"<options type=\"joystick\" instance=(\\d) Product=\"(.*?)\""})
 
 (def joystick-tranforms {1 2
@@ -294,7 +304,6 @@
 (defn remap-joystick-nums [xml-string]
   )
 
-
 (defn -main
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
@@ -303,5 +312,6 @@
     (if (some #(= "-s" %) args)
       (let [timestamp (str (java.time.LocalDateTime/now))
             file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
-        (spit file-name (with-out-str (clojure.pprint/pprint joystick-map))))
-      (clojure.pprint/pprint joystick-map))))
+        (spit file-name (binding [clojure.pprint/*print-right-margin* 180]
+                          (with-out-str (pprint joystick-map)))))
+      (pprint joystick-map))))
