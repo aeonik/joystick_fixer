@@ -12,7 +12,7 @@
    "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick",
    :joydev-symlink-target "/dev/input/js4"},
   :pci-address "0000:2c:00.1",
-  :usb-address nil}
+  :usb-address "0:1.4.4:1.0"}
  {:name "VPC_SharKa-50_Panel",
   :evdev-info
   {:evdev-id-path
@@ -27,7 +27,7 @@
    "/dev/input/by-path/pci-0000:2c:00.1-usbv2-0:1.4.2:1.0-joystick",
    :joydev-symlink-target "/dev/input/js2"},
   :pci-address "0000:2c:00.1",
-  :usb-address nil}
+  :usb-address "0:1.4.2:1.0"}
  {:name "VPC_Stick_MT-50CM2",
   :evdev-info
   {:evdev-id-path
