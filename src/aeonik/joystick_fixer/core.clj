@@ -41,6 +41,12 @@
                            :joydev-info example-joydev-info
                            :pci-address "0000:2c:00.1"
                            :usb-address "0:1.4.4:1.0"})
+
+(def order-of-keys [:name :pci-address :usb-address :evdev-id-path :evdev-physical-path :evdev-symlink-target :joydev-id-path :joydev-physical-path :joydev-symlink-target])
+(def order-map (zipmap order-of-keys (range)))
+(defn key-comparator [k1 k2]
+  (compare (order-map k1) (order-map k2)))
+
 (defrecord joystick-map [name evdev-info joydev-info pci-address usb-address])
 
 (defn read-edn-file [file-path]
@@ -191,7 +197,6 @@
 
 (def grouped-paths (group-by-differences (sort (search-path "/dev/input/by-id" #"VPC"))))
 
-
 (defn regex-search->id-symlinks
   "Given a regex, return a map of the path and the symlink it points to."
   [^Pattern regex]
@@ -208,8 +213,7 @@
   {:evdev  (first (regex-search->id-symlinks (re-pattern evdev-regexp)))
    :joydev (first (regex-search->id-symlinks (re-pattern joydev-regexp)))})
 
-(correlate-joystick-links)
-
+(comment (correlate-joystick-links))
 
 (defn correlate-joystick-name [joystick-name]
   {:name   joystick-name
@@ -279,8 +283,16 @@
                               (keys joydev-info))
         order-map (zipmap keys-in-order (range))
         comparator (fn [k1 k2] (compare (order-map k1) (order-map k2)))]
+    (spy keys-in-order)
     (into (sorted-map-by comparator)
           (merge (dissoc joystick-map :evdev-info :joydev-info) evdev-info joydev-info))))
+
+(defn keep-map-order [map function]
+  (let [keys-in-order (keys map)
+        order-map (zipmap keys-in-order (range))
+        comparator (fn [k1 k2] (compare (order-map k1) (order-map k2)))]
+    (into (sorted-map-by comparator)
+          (function map))))
 
 (comment (map promote-children (process-all-joysticks)))
 
@@ -353,6 +365,12 @@
         updated-data (map promote-children data)]
     (write-edn-file! file-path updated-data)))
 
+(defn process-files-sort-maps! [file-path]
+  (let [data         (read-edn-file file-path)
+        sorted-data  (sort-by :name data)
+        updated-data (map #(into (sorted-map-by key-comparator) %) sorted-data)]
+    (write-edn-file! file-path updated-data)))
+
 (defn list-edn-files []
   (filter #(re-matches #".*_joystick_device_map\.edn$" (.getPath %))
           (file-seq (clojure.java.io/file "resources"))))
@@ -361,9 +379,13 @@
   (doseq [file (list-edn-files)]
     (process-files-usb-fix! (.getPath file))))
 
-(defn promot-all-files! []
+(defn promote-all-files! []
   (doseq [file (list-edn-files)]
     (process-files-flatten-map! (.getPath file))))
+
+(defn sort-all-files! []
+  (doseq [file (list-edn-files)]
+    (process-files-sort-maps! (.getPath file))))
 
 (defn parse-timestamp [timestamp-str]
   (LocalDateTime/parse timestamp-str))
