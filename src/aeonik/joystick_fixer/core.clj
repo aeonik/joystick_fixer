@@ -283,7 +283,6 @@
                               (keys joydev-info))
         order-map (zipmap keys-in-order (range))
         comparator (fn [k1 k2] (compare (order-map k1) (order-map k2)))]
-    (spy keys-in-order)
     (into (sorted-map-by comparator)
           (merge (dissoc joystick-map :evdev-info :joydev-info) evdev-info joydev-info))))
 
@@ -459,10 +458,12 @@
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
   [& args]
-  (let [joystick-map (map promote-children (process-all-joysticks))]
+  (let [joystick-map (map promote-children (process-all-joysticks))
+        sorted-data  (sort-by :name joystick-map)
+        updated-data (map #(into (sorted-map-by key-comparator) %) sorted-data)]
     (if (some #(= "-s" %) args)
       (let [timestamp (str (LocalDateTime/now))
             file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
         (spit file-name (binding [clojure.pprint/*print-right-margin* 180]
-                          (with-out-str (pprint joystick-map)))))
-      (pprint joystick-map))))
+                          (with-out-str (pprint updated-data)))))
+      (pprint updated-data))))
