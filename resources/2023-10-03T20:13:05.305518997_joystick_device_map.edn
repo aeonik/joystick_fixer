@@ -1,44 +1,36 @@
 ({:name "L-VPC_Stick_MT-50CM2",
-  :evdev-info
-  {:evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-event-joystick",
-   :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usbv2-0:1.4.4:1.0-event-joystick",
-   :evdev-symlink-target "/dev/input/event28"},
-  :joydev-info
-  {:joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick",
-   :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick",
-   :joydev-symlink-target "/dev/input/js4"},
   :pci-address "0000:2c:00.1",
-  :usb-address "0:1.4.4:1.0"}
+  :usb-address "0:1.4.4:1.0",
+  :evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-event-joystick",
+  :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usbv2-0:1.4.4:1.0-event-joystick",
+  :evdev-symlink-target "/dev/input/event28",
+  :joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick",
+  :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick",
+  :joydev-symlink-target "/dev/input/js4"}
  {:name "L-VPC_Stick_MT-50CM2",
-  :evdev-info
-  {:evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-event-joystick",
-   :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usbv2-0:1.4.4:1.0-event-joystick",
-   :evdev-symlink-target "/dev/input/event28"},
-  :joydev-info
-  {:joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick",
-   :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick",
-   :joydev-symlink-target "/dev/input/js4"},
   :pci-address "0000:2c:00.1",
-  :usb-address "0:1.4.4:1.0"}
+  :usb-address "0:1.4.4:1.0",
+  :evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-event-joystick",
+  :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usbv2-0:1.4.4:1.0-event-joystick",
+  :evdev-symlink-target "/dev/input/event28",
+  :joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick",
+  :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick",
+  :joydev-symlink-target "/dev/input/js4"}
  {:name "VPC_SharKa-50_Panel",
-  :evdev-info
-  {:evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-event-joystick",
-   :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-event-joystick",
-   :evdev-symlink-target "/dev/input/event26"},
-  :joydev-info
-  {:joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick",
-   :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick",
-   :joydev-symlink-target "/dev/input/js2"},
   :pci-address "0000:2c:00.1",
-  :usb-address "0:1.4.2:1.0"}
+  :usb-address "0:1.4.2:1.0",
+  :evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-event-joystick",
+  :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-event-joystick",
+  :evdev-symlink-target "/dev/input/event26",
+  :joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick",
+  :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick",
+  :joydev-symlink-target "/dev/input/js2"}
  {:name "VPC_Throttle_MT-50CM3",
-  :evdev-info
-  {:evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick",
-   :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.1:1.0-event-joystick",
-   :evdev-symlink-target "/dev/input/event10"},
-  :joydev-info
-  {:joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-joystick",
-   :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.1:1.0-joystick",
-   :joydev-symlink-target "/dev/input/js1"},
   :pci-address "0000:2c:00.1",
-  :usb-address "0:1.4.1:1.0"})
+  :usb-address "0:1.4.1:1.0",
+  :evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick",
+  :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.1:1.0-event-joystick",
+  :evdev-symlink-target "/dev/input/event10",
+  :joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-joystick",
+  :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.1:1.0-joystick",
+  :joydev-symlink-target "/dev/input/js1"})
