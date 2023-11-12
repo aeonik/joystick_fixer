@@ -1,18 +1,23 @@
 (ns aeonik.joystick-fixer.core
   (:require [clojure.java.io :as io]
             [clojure.pprint :as pprint]
+            [clojure.data :as data]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.pprint :refer [pprint]]
             [clojure.tools.reader.edn :as edn]
-            [malli.core :as m])
+            [editscript.core :as e]
+            [malli.core :as m]
+            [tupelo.core :refer :all])
   (:import (clojure.lang Keyword)
            (java.io File)
            [java.nio.file Files Paths]
+           (java.time LocalDateTime)
            (java.util.regex Pattern)
            (org.apache.commons.io FileUtils)))
 
 (def evdev-regexp #"-event-joystick$")
-(def joydev-regexp #"FF-joystick$")
+(def joydev-regexp #"(?<!-event)-joystick$")
 (def evdev-path-regexp #"event\d+$")
 (def joydev-path-regexp #"js\d+$")
 (def device-paths {:by-id   "/dev/input/by-id"
@@ -41,10 +46,10 @@
 (defn read-edn-file [file-path]
   (with-open [rdr (clojure.java.io/reader file-path)]
     (edn/read-string (slurp rdr))))
+
 (defn write-edn-file! [file-path data]
   (spit file-path (binding [clojure.pprint/*print-right-margin* 200]
                     (with-out-str (pprint/pprint data)))))
-
 
 (defn deep-merge
   "Recursively merges maps."
@@ -64,7 +69,7 @@
 
 (defn filename->joystick-name
   "Given a file name, return the joystick name."
-  [^String file-name]
+  [^String file-name] []
   (second (re-find extract-name-rexexp file-name)))
 
 (comment (filename->joystick-name "usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick"))
@@ -77,8 +82,9 @@
 
 (comment (file->symlink (io/file "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick")))
 
-(defn split-usb-pci [^String path]
+(defn split-usb-pci
   "Given a path in /dev/input/by-path, return the pci and usb addresses."
+  [^String path]
   {:pci-address (second (re-find extract-pci-regexp path))
    :usb-address (second (re-find extract-usb-regexp path))})
 
@@ -132,7 +138,59 @@
        (filter #(re-find regex (.getName %)))
        (mapv #(.getAbsolutePath %))))
 
-(comment (search-path "/dev/input/by-id" #"VPC"))
+(defn edit-distance-between-pairs [device1 device2]
+  (-> (e/diff device1 device2 {:alg :a-star :str-diff :character :str-change-limit 0.8})
+      (e/get-edits)
+      (e/edits->script)
+      (e/edit-distance)))
+
+(defn calculate-edit-distances [devices]
+  (map (fn [[d1 d2]] (edit-distance-between-pairs d1 d2))
+       (partition 2 1 devices)))
+
+(def ediff-test (let [devices   (sort (search-path "/dev/input/by-id" #""))
+                      distances (calculate-edit-distances devices)]
+                  distances))
+
+
+(comment (search-path "/dev/input/by-id" #"VPC")
+
+         (let [devices (sort (search-path "/dev/input/by-id" #""))
+               d (first devices)
+               q (nth devices 4)
+               d-q (e/diff d q {:str-diff :character :str-change-limit 0.8})
+               v (e/get-edits d-q)
+               ds (e/edits->script v)]
+            (println d)
+            (println q)
+            (println d-q)
+            (println v)
+            (println ds)
+            (println (e/get-size d-q))
+            (println (e/get-size ds))
+            (println (e/edit-distance d-q))
+            (println (e/edit-distance ds))
+
+            (data/diff (char-array d) (char-array q))
+
+            ))
+
+(defn prefix [s n]
+  (subs s 0 (min n (count s))))
+
+(defn group-by-differences [sorted-paths]
+  (let [group-helper (fn group-helper [acc [first & rest :as items] last-prefix]
+                       (if (empty? items)
+                         (conj acc items)
+                         (let [current-prefix (prefix first 15)] ;; Adjust the 15 to control the grouping sensitivity
+                           (if (= current-prefix last-prefix)
+                             (recur acc rest last-prefix)
+                             (recur (conj acc [first]) rest current-prefix)))))
+        grouped      (group-helper [] sorted-paths "")]
+    (remove empty? grouped)))
+
+(def grouped-paths (group-by-differences (sort (search-path "/dev/input/by-id" #"VPC"))))
+
 
 (defn regex-search->id-symlinks
   "Given a regex, return a map of the path and the symlink it points to."
@@ -143,13 +201,24 @@
 
 (comment (regex-search->id-symlinks #"VPC"))
 
+(defn get-all-devices []
+  (regex-search->id-symlinks (re-pattern ".*")))
+
+(defn correlate-joystick-links []
+  {:evdev  (first (regex-search->id-symlinks (re-pattern evdev-regexp)))
+   :joydev (first (regex-search->id-symlinks (re-pattern joydev-regexp)))})
+
+(correlate-joystick-links)
+
+
 (defn correlate-joystick-name [joystick-name]
   {:name   joystick-name
-   :evdev  (first (regex-search->id-symlinks (re-pattern (str joystick-name ".*" evdev-regexp))))
-   :joydev (first (regex-search->id-symlinks (re-pattern (str joystick-name ".*" joydev-regexp))))})
+   :evdev  (first (regex-search->id-symlinks (re-pattern (str "_" joystick-name ".*" evdev-regexp))))
+   :joydev (first (regex-search->id-symlinks (re-pattern (str "_" joystick-name ".*" joydev-regexp))))})
 
-(first (regex-search->id-symlinks (re-pattern (str "VPC" ".*" joydev-regexp))))
-(comment (into {} (mapv correlate-joystick-name example-joystick-names)))
+(comment (first (regex-search->id-symlinks (re-pattern (str "VPC" ".*" joydev-regexp))))
+         (first (regex-search->id-symlinks (re-pattern (str "VPC" ".*" evdev-regexp))))
+         (into {} (mapv correlate-joystick-name example-joystick-names)))
 
 (defn symlink-target->evdev-info [symlink-target]
   (let [evdev-id-path       (by-path->by-id symlink-target)
@@ -204,10 +273,16 @@
 
 (defn promote-children [joystick-map]
   (let [evdev-info  (get joystick-map :evdev-info {})
-        joydev-info (get joystick-map :joydev-info {})]
-    (-> joystick-map
-        (dissoc :evdev-info :joydev-info)
-        (merge evdev-info joydev-info))))
+        joydev-info (get joystick-map :joydev-info {})
+        keys-in-order (concat (keys (dissoc joystick-map :evdev-info :joydev-info))
+                              (keys evdev-info)
+                              (keys joydev-info))
+        order-map (zipmap keys-in-order (range))
+        comparator (fn [k1 k2] (compare (order-map k1) (order-map k2)))]
+    (into (sorted-map-by comparator)
+          (merge (dissoc joystick-map :evdev-info :joydev-info) evdev-info joydev-info))))
+
+(comment (map promote-children (process-all-joysticks)))
 
 (defn promote-and-order [joystick-map]
   (let [name         {:name (get joystick-map :name)}
@@ -219,6 +294,9 @@
         (merge evdev-info joydev-info)
         (merge name))))
 
+(comment (map promote-and-order (process-all-joysticks)))
+
+(dissoc-in (first (process-all-joysticks)) [:evdev-info])
 
 (comment (defn sort-joysticks [joystick-map]
            (sort-by :name joystick-map)))
@@ -258,15 +336,21 @@
 (defn update-usb-address
   "This function is needed to fix the usb-address field in the data due to regex changes."
   [entry]
-  (let [evdev-physical-path (get-in entry [:evdev-info :evdev-physical-path])
+  (let [evdev-physical-path  (get-in entry [:evdev-info :evdev-physical-path])
         joydev-physical-path (get-in entry [:joydev-info :joydev-physical-path])
-        usb-address (or (-> (split-usb-pci evdev-physical-path) :usb-address)
-                        (-> (split-usb-pci joydev-physical-path) :usb-address))]
+        usb-address          (or (-> (split-usb-pci evdev-physical-path) :usb-address)
+                                 (-> (split-usb-pci joydev-physical-path) :usb-address))]
     (assoc entry :usb-address usb-address)))
+
 
 (defn process-files-usb-fix! [file-path]
   (let [data         (read-edn-file file-path)
         updated-data (map update-usb-address data)]
+    (write-edn-file! file-path updated-data)))
+
+(defn process-files-flatten-map! [file-path]
+  (let [data         (read-edn-file file-path)
+        updated-data (map promote-children data)]
     (write-edn-file! file-path updated-data)))
 
 (defn list-edn-files []
@@ -277,12 +361,57 @@
   (doseq [file (list-edn-files)]
     (process-files-usb-fix! (.getPath file))))
 
+(defn promot-all-files! []
+  (doseq [file (list-edn-files)]
+    (process-files-flatten-map! (.getPath file))))
+
+(defn parse-timestamp [timestamp-str]
+  (LocalDateTime/parse timestamp-str))
+
+(defn extract-timestamp-from-filename [filename]
+  (re-find #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+" filename))
+
+(defn generate-joystick-table-data [file-path]
+  (let [timestamp-str (extract-timestamp-from-filename file-path)
+        date          timestamp-str
+        joystick-data (read-edn-file file-path)]            ; Replace with your EDN reading function
+    (map (fn [joystick]
+           {:date   date
+            :name   (:name joystick)
+            :pci    (:pci-address joystick)
+            :usb    (:usb-address joystick)
+            :joydev (str/replace (get-in joystick [:joydev-info :joydev-symlink-target])
+                                 "/dev/input/" "")
+            :evdev  (str/replace (get-in joystick [:evdev-info :evdev-symlink-target])
+                                 "/dev/input/" "")})
+         joystick-data)))
+
+(defn generate-all-joysticks-table-data [file-paths]
+  (mapcat generate-joystick-table-data file-paths))
+
+(defn print-joystick-info [file-path]
+  (let [timestamp-str (extract-timestamp-from-filename file-path)
+        date          timestamp-str
+        joystick-data (read-edn-file file-path)             ; Replace with your EDN reading function
+        table-data    (map #(assoc % :date date
+                                     :evdev-symlink-target (get-in % [:evdev-info :evdev-symlink-target]))
+                           joystick-data)]
+    (pprint/pprint table-data)))
+
+(defn print-all-joysticks-info [file-paths]
+  (doseq [file-path file-paths]
+    (print-joystick-info file-path)))
+
+(generate-all-joysticks-table-data (map #(.getPath %) (list-edn-files)))
+
+(comment (print-all-joysticks-info (map #(.getPath %) (list-edn-files))))
+
 (comment (def data (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))
          (def data2 (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T23:14:08.453350096_joystick_device_map.edn"))
 
          (transform-data (read-string data2)))
 
-(comment (process-all-joysticks))
+(comment (map promote-children (process-all-joysticks)))
 
 (defn simple-replace [^String input ^String old ^String new]
   (str/replace input (re-pattern old) new))
@@ -308,9 +437,9 @@
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
   [& args]
-  (let [joystick-map (process-all-joysticks)]
+  (let [joystick-map (map promote-children (process-all-joysticks))]
     (if (some #(= "-s" %) args)
-      (let [timestamp (str (java.time.LocalDateTime/now))
+      (let [timestamp (str (LocalDateTime/now))
             file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
         (spit file-name (binding [clojure.pprint/*print-right-margin* 180]
                           (with-out-str (pprint joystick-map)))))

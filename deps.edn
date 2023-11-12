@@ -12,15 +12,16 @@
            org.clj-commons/digest         {:mvn/version "1.4.100"}
            tupelo/tupelo                  {:mvn/version "23.07.04"}
            babashka/fs                    {:mvn/version "0.4.19"}
+           juji/editscript                {:mvn/version "0.6.3"}
+           io.github.nextjournal/clerk    {:mvn/version "0.15.957"}
+           dev.weavejester/medley         {:mvn/version "1.7.0"}
+           zprint/zprint                  {:mvn/version "1.2.8"}
+
            thomasa/morpheus               {:git/url "https://github.com/benedekfazekas/morpheus.git"
                                            :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}
            }
 
- :aliases {:dev      {:classpath-overrides {org.clojure/clojure nil} ;; for disabling the official compiler
-                      :extra-deps          {com.github.jpmonettas/clojure        {:mvn/version "RELEASE"}
-                                            com.github.jpmonettas/flow-storm-dbg {:mvn/version "RELEASE"}}
-                      :jvm-opts            ["-Dclojure.storm.instrumentEnable=true"
-                                            "-Dclojure.storm.instrumentOnlyPrefixes=aeonik.joystick-fixer.core"]}
+ :aliases {:dev      {:extra-paths ["dev"]}
            :morpheus {:extra-deps {thomasa/morpheus {:git/url "https://github.com/benedekfazekas/morpheus.git"
                                                      :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}}
                       :main-opts  ["-m" "thomasa.morpheus.main"]}}}
