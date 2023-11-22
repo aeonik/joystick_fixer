@@ -454,6 +454,36 @@
 (defn remap-joystick-nums [xml-string]
   )
 
+(defn read-edn-file [file]
+  (with-open [r (io/reader file)]
+    (let [pb-reader (java.io.PushbackReader. r)
+          read-next #(edn/read {:eof ::eof} pb-reader)]
+      (loop [data (read-next)
+             acc []]
+        (if (= data ::eof)
+          acc
+          (recur (read-next) (conj acc data)))))))
+(def catted-edn (slurp (io/resource "cat_joystick.edn")))
+
+(read-edn-file (io/resource "cat_joystick.edn"))
+
+(require '[clojure.data.csv :as csv])
+
+(defn write-csv [data filename]
+  (with-open [writer (io/writer filename)]
+    (let [all-keys (->> data (mapcat (comp keys first)) distinct)
+          headers (cons "reboot-id" all-keys)
+          rows (mapcat (fn [group records]
+                         (map (fn [record]
+                                (cons group (map (fn [k] (get record k "")) all-keys)))
+                              records))
+                       (range) data)]
+      (csv/write-csv writer (cons headers rows)))))
+
+(def edn-data (read-edn-file (io/resource "cat_joystick.edn")))
+(write-csv edn-data "output.csv")
+
+
 (defn -main
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
