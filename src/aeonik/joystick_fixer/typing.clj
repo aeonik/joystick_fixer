@@ -1,5 +1,4 @@
-(ns aeonik.joystick-fixer.typing
-  )
+(ns aeonik.joystick-fixer.typing)
 "unique-id
 ❯ ll /dev/input/by-id
 total 0

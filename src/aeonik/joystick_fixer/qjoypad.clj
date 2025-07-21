@@ -1,6 +1,6 @@
 (ns aeonik.joystick-fixer.qjoypad
   (:require [instaparse.core :as instaparse]
-            [instaparse.combinators :as combinators]
+            [instaparse.combinators :as cmb]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.java.shell :as sh]
@@ -51,45 +51,45 @@
 
 
 
-(combinators/ebnf qjoypad-ebnf)
+(cmb/ebnf qjoypad-ebnf)
 (def qjoypad-grammar-combinator
-  {:file (combinators/cat
-           (combinators/nt :header)
-           (combinators/plus (combinators/nt :joystick)))
-   :header (combinators/cat
-             (combinators/string "# QJoyPad 4.3 Layout File")
-             (combinators/nt :newlines))
-   :joystick (combinators/cat
-               (combinators/string "Joystick")
-                (combinators/nt :space)
-               (combinators/nt :joystick_number)
-               (combinators/nt :space)
-               (combinators/string "{")
-               (combinators/nt :newlines)
-               (combinators/star (combinators/nt :key_map))
-               (combinators/string "}")
-               (combinators/nt :newlines))
-   :key_map (combinators/cat
-              (combinators/nt :tab)
-              (combinators/nt :joystick_button)
-              (combinators/nt :type)
-              (combinators/opt (combinators/nt :newlines)))
-   :joystick_button (combinators/cat
-                      (combinators/string "Button")
-                      (combinators/nt :space)
-                      (combinators/nt :number)
-                      (combinators/string ":")
-                      (combinators/nt :space))
-   :type (combinators/cat
-           (combinators/regexp "\\w+")
-           (combinators/nt :space)
-           (combinators/nt :type_button))
-   :type_button (combinators/nt :number)
-   :joystick_number (combinators/nt :number)
-   :number (combinators/regexp "\\d+")
-   :tab (combinators/string "\t")
-   :newlines (combinators/regexp "\\n+")
-   :space (combinators/string " ")})
+  {:file (cmb/cat
+           (cmb/nt :header)
+           (cmb/plus (cmb/nt :joystick)))
+   :header (cmb/cat
+             (cmb/string "# QJoyPad 4.3 Layout File")
+             (cmb/nt :newlines))
+   :joystick (cmb/cat
+               (cmb/string "Joystick")
+                (cmb/nt :space)
+               (cmb/nt :joystick_number)
+               (cmb/nt :space)
+               (cmb/string "{")
+               (cmb/nt :newlines)
+               (cmb/star (cmb/nt :key_map))
+               (cmb/string "}")
+               (cmb/nt :newlines))
+   :key_map (cmb/cat
+              (cmb/nt :tab)
+              (cmb/nt :joystick_button)
+              (cmb/nt :type)
+              (cmb/opt (cmb/nt :newlines)))
+   :joystick_button (cmb/cat
+                      (cmb/string "Button")
+                      (cmb/nt :space)
+                      (cmb/nt :number)
+                      (cmb/string ":")
+                      (cmb/nt :space))
+   :type (cmb/cat
+           (cmb/regexp "\\w+")
+           (cmb/nt :space)
+           (cmb/nt :type_button))
+   :type_button (cmb/nt :number)
+   :joystick_number (cmb/nt :number)
+   :number (cmb/regexp "\\d+")
+   :tab (cmb/string "\t")
+   :newlines (cmb/regexp "\\n+")
+   :space (cmb/string " ")})
 
 (def qjoypad-parser-combinator (instaparse/parser qjoypad-grammar-combinator :start :file :output-format :enlive))
 
@@ -109,7 +109,6 @@
    :type            (fn [& [type-name & type-buttons]] {:type-name type-name, :type-buttons type-buttons})
    :type_button     (fn [& [number]] {:type-button-number number})})
 
-
 (defn parse-qjoypad
   [file & {:as options}]
   (let [default-options {:grammar qjoypad-ebnf :output-format :hiccup}
@@ -122,8 +121,6 @@
 
 (parse-qjoypad file :grammar qjoypad-ebnf :output-format :hiccup)
 (parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive :unhide :all)
-
-
 
 (def parse-tree (instaparse/parse qjoypad-parser file :unhide :all))
 (def parse-tree-combinator (instaparse/parse qjoypad-parser-combinator file :unhide :all))
@@ -172,7 +169,6 @@
                 (:instaparse.gll/end-index metadata)
                 "replacement text"))
 
-
 (comment (defn replace-joystick-numbers-in-text [text parse-tree]
   (let [replacement-ranges (->> parse-tree
                                 (tree-seq vector? seq)
@@ -187,7 +183,6 @@
         parts (map (fn [[start end]] (subs text start end))
                    (partition 2 1 (interleave (cons 0 (map second sorted-ranges)) (cons (dec (count text)) nil))))]
     (apply str (interleave parts replacements)))))
-
 
 ;; Print with metadata
 (pprint (meta parse-tree))

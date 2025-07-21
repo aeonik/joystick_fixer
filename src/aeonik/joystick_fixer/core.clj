@@ -158,7 +158,6 @@
                       distances (calculate-edit-distances devices)]
                   distances))
 
-
 (comment (search-path "/dev/input/by-id" #"VPC")
 
          (let [devices (sort (search-path "/dev/input/by-id" #""))
@@ -177,9 +176,7 @@
             (println (e/edit-distance d-q))
             (println (e/edit-distance ds))
 
-            (data/diff (char-array d) (char-array q))
-
-            ))
+            (data/diff (char-array d) (char-array q))))
 
 (defn prefix [s n]
   (subs s 0 (min n (count s))))
@@ -444,6 +441,7 @@
 " <options type=\"joystick\" instance=\"1\" Product=\"VIRPIL Controls 20220720 VPC Stick MT-50CM2  {012F3344-0000-0000-0000-504944564944}\">\n"
 " <options type=\"joystick\" instance=\"2\" Product=\"VIRPIL Controls 20220720 VPC Throttle MT-50CM3  {01973344-0000-0000-0000-504944564944}\">\n"
 " <options type=\"joystick\" instance=\"3\" Product=\"VIRPIL Controls 20220720 VPC SharKa-50 Panel  {025D3344-0000-0000-0000-504944564944}\"/>\n"
+
 (def xml-replace {:input   #"input=\"js(\\d)"
                   :options #"<options type=\"joystick\" instance=(\\d) Product=\"(.*?)\""})
 
@@ -451,8 +449,7 @@
                          2 3
                          3 1
                          4 4})
-(defn remap-joystick-nums [xml-string]
-  )
+(defn remap-joystick-nums [xml-string])
 
 (defn read-edn-file [file]
   (with-open [r (io/reader file)]
@@ -463,6 +460,7 @@
         (if (= data ::eof)
           acc
           (recur (read-next) (conj acc data)))))))
+
 (def catted-edn (slurp (io/resource "cat_joystick.edn")))
 
 (read-edn-file (io/resource "cat_joystick.edn"))
@@ -482,7 +480,6 @@
 
 (def edn-data (read-edn-file (io/resource "cat_joystick.edn")))
 (write-csv edn-data "output.csv")
-
 
 (defn -main
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
