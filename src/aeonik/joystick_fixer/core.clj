@@ -469,11 +469,13 @@
 
 (defn write-csv [data filename]
   (with-open [writer (io/writer filename)]
-    (let [all-keys (->> data (mapcat (comp keys first)) distinct)
+    (let [all-keys (->> data (mapcat (comp keys first))
+                        distinct)
           headers (cons "reboot-id" all-keys)
           rows (mapcat (fn [group records]
                          (map (fn [record]
-                                (cons group (map (fn [k] (get record k "")) all-keys)))
+                                (cons group (map (fn [k] (get record k ""))
+                                                 all-keys)))
                               records))
                        (range) data)]
       (csv/write-csv writer (cons headers rows)))))
@@ -485,9 +487,11 @@
   "If passed the -s argument, saves the output to a timestamped file in the resources directory.
    Otherwise, simply pprint the output."
   [& args]
-  (let [joystick-map (map promote-children (process-all-joysticks))
+  (let [joystick-map (map promote-children
+                          (process-all-joysticks))
         sorted-data  (sort-by :name joystick-map)
-        updated-data (map #(into (sorted-map-by key-comparator) %) sorted-data)]
+        updated-data (map #(into (sorted-map-by key-comparator) %)
+                          sorted-data)]
     (if (some #(= "-s" %) args)
       (let [timestamp (str (LocalDateTime/now))
             file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
