@@ -23,7 +23,7 @@
 (def device-paths {:by-id   "/dev/input/by-id"
                    :by-path "/dev/input/by-path"})
 (def joystick-name-regexp #"VPC")
-(def extract-name-rexexp #"usb-VIRPIL_Controls_(\d+)_(.*?)_FF(-event)?-joystick")
+(def extract-name-rexexp #"usb-VIRPIL_Controls_\d+_(.*?)_FF(-event)?-joystick")
 (def extract-pci-regexp #"pci-(.*?)-usbv?\d*-")
 (def extract-usb-regexp #"usbv?\d*-(.*?)-")
 (def example-joystick-names ["L-VPC_Stick_MT-50CM2" "VPC_SharKa-50_Panel" "VPC_Throttle_MT-50CM3" "VPC_Stick_MT-50CM2"])
