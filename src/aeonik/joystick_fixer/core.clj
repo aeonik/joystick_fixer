@@ -494,7 +494,7 @@
                           sorted-data)]
     (if (some #(= "-s" %) args)
       (let [timestamp (str (LocalDateTime/now))
-            file-name (str "/home/dave/Projects/joystick_fixer/resources/" timestamp "_joystick_device_map.edn")]
+            file-name (str "resources/" timestamp "_joystick_device_map.edn")]
         (spit file-name (binding [clojure.pprint/*print-right-margin* 180]
                           (with-out-str (pprint updated-data)))))
       (pprint updated-data))))
