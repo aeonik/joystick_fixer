@@ -311,7 +311,7 @@
 
 (comment
   (def temp-file (process-all-joysticks))
-  (def temp-file2 (read-string (slurp "/home/dave/Projects/joystick_fixer/resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn"))))
+  (def temp-file2 (read-string (slurp (io/resource "/2023-07-18T22:55:51.210155120_joystick_device_map.edn")))))
 
 (defn sort-joysticks [joystick-map]
   (sorted-map joystick-map))
