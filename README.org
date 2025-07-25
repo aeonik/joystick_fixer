@@ -1,0 +1,66 @@
+#+title: Readme
+* Overview
+This project provides tools for managing and fixing joystick device symlinks and mappings on Linux systems, particularly for setups using multiple similar devices (e.g., VIRPIL controllers). It scans system input device directories, correlates device names with their physical connections (PCI, USB), and can export structured device maps for use in XML layouts or QJoyPad configurations. The project aims to help users persist and restore joystick order and assignment across reboots or hardware changes.
+
+* Installation
+
+1. Install [Clojure](https://clojure.org/guides/getting_started).
+2. Clone this repository:
+
+   #+BEGIN_SRC bash
+   git clone https://github.com/aeonik/joystick_fixer.git
+   cd joystick_fixer
+   #+END_SRC
+
+   #+RESULTS:
+
+3. Install dependencies and run:
+
+   #+BEGIN_SRC bash
+   clj -M -m aeonik.joystick-fixer.core
+   #+END_SRC
+
+* Usage
+
+- Running the main tool:
+
+  #+BEGIN_SRC bash
+  clj -M -m aeonik.joystick-fixer.core
+  #+END_SRC
+- By default, this prints a summary of detected joysticks and their mappings.
+- Use the =-s= flag to save the output to a timestamped EDN file in =resources/=.
+
+* Directory Structure
+
+- =src/= — Clojure source code
+    - [[file:src/aeonik/joystick_fixer/core.clj][aeonik/joystick_fixer/core.clj]] :: Main logic for scanning =/dev/input/by-id= and =/dev/input/by-path=, correlating device symlinks, extracting device information (names, PCI/USB paths), and exporting persistent device maps. This is the entry point for the application.
+    - [[file:src/aeonik/joystick_fixer/common.clj][aeonik/joystick_fixer/common.clj]] :: Shared utility functions for line diffing and serializing/unserializing data structures and parse trees.
+    - [[file:src/aeonik/joystick_fixer/typing.clj][aeonik/joystick_fixer/typing.clj]] :: Notes, types, and documentation regarding device map structure and record types used in the project.
+    - [[file:src/aeonik/joystick_fixer/sysfs.clj][aeonik/joystick_fixer/sysfs.clj]] :: Functions for interfacing with Linux =udevadm= and system input metadata to extract low-level device information.
+    - [[file:src/aeonik/joystick_fixer/qjoypad.clj][aeonik/joystick_fixer/qjoypad.clj]] :: Instaparse grammar/parser for QJoyPad =.lyt= files and transformations for mapping joystick numbers in QJoyPad layouts.
+    - [[file:src/aeonik/joystick_fixer/xml.clj][aeonik/joystick_fixer/xml.clj]] :: Tools for parsing and updating joystick references in XML files (e.g., for simulator controller layouts). Supports grammar-based XML diffing and transforms.
+    - [[file:src/aeonik/graph.clj][aeonik/graph.clj]] :: Dependency graphs (via Ubergraph/Loom/Morpheus) for code analysis and understanding relationships among project namespaces and vars.
+    - [[file:src/aeonik/notebooks/evdev.clj][aeonik/notebooks/evdev.clj]] :: Notebook-style exploration of how device symlinks and mappings are determined, with docstring explanations—useful for both development and troubleshooting.
+
+- =resources/= — Stores exported device maps (in EDN), sample layouts, and fixture files.
+
+- =README.org= — This file.
+
+* Contributors
+
+- Dave Connett <dave.connett@gmail.com>
+
+* License
+
+All rights reserved for now.
+
+-----
+
+*Project Links:*
+- [[file:src/aeonik/joystick_fixer/core.clj][Main logic: core.clj]]
+- [[file:src/aeonik/joystick_fixer/qjoypad.clj][QJoyPad parser: qjoypad.clj]]
+- [[file:src/aeonik/joystick_fixer/xml.clj][XML parser/fixer: xml.clj]]
+- [[file:src/aeonik/notebooks/evdev.clj][Notebook walkthrough: evdev.clj]]
+- [[file:src/aeonik/joystick_fixer/sysfs.clj][Low-level: sysfs.clj]]
+- [[file:src/aeonik/joystick_fixer/typing.clj][Types/examples: typing.clj]]
+- [[file:src/aeonik/graph.clj][Graph analysis: graph.clj]]

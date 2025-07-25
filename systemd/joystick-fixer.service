@@ -1,0 +1,10 @@
+[Unit]
+Description=Joystick Fixer Service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/dave/Projects/joystick_fixer
+ExecStart=/usr/bin/clojure -m aeonik.joystick-fixer.core -s
+
+[Install]
+WantedBy=default.target
