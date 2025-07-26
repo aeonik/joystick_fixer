@@ -11,7 +11,7 @@
 (defn joystick-map-files []
   (->> (file-seq (io/file resource-dir))
        (filter #(re-matches #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+_joystick_device_map\.edn" (.getName %)))
-       (sort-by #(.getName %) #(compare %2 %1))))
+       (sort-by #(.getName %) #(compare %1 %2))))
 
 (defn read-edn-file [file]
   (with-open [rdr (io/reader file)]
