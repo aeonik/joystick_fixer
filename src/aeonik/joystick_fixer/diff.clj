@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.data :as data]
             [clojure.edn :as edn]
+            [clojure.pprint :refer [pprint]]
             [lambdaisland.deep-diff2 :as ddiff]))
 
 (def resource-dir "resources")
@@ -27,5 +28,23 @@
             diff   (ddiff/diff data-a data-b)]
         {:files [(.getName file-a) (.getName file-b)]
          :diff diff}))))
-;; Example usage:
-(ddiff/pretty-print (diff-last-two))
+
+(defn pretty-print-last-two-diffs []
+  (ddiff/pretty-print (diff-last-two)))
+
+(defn print-summary []
+  (let [orig-diff (:diff (diff-last-two))
+        minimized (ddiff/minimize (diff-last-two))
+        output    (assoc minimized
+                    :diff
+                    (map (fn [min entry]
+                           (assoc min :name (:name entry)))
+                         (:diff minimized)
+                         orig-diff))]
+    (ddiff/pretty-print output)))
+
+(defn -main [& args]
+  (let [result (diff-last-two)]
+    (if (some #(= "--summary" %) args)
+      (print-summary)
+      (ddiff/pretty-print result))))
