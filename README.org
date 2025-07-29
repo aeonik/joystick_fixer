@@ -4,15 +4,13 @@ This project provides tools for managing and fixing joystick device symlinks and
 
 * Installation
 
-1. Install [Clojure](https://clojure.org/guides/getting_started).
+1. Install [[https://clojure.org/guides/getting_started][Clojure]].
 2. Clone this repository:
 
    #+BEGIN_SRC bash
    git clone https://github.com/aeonik/joystick_fixer.git
    cd joystick_fixer
    #+END_SRC
-
-   #+RESULTS:
 
 3. Install dependencies and run:
 
@@ -32,7 +30,7 @@ This project provides tools for managing and fixing joystick device symlinks and
 
 * Directory Structure
 
-- =src/= — Clojure source code
+** =src/= — Clojure source code
     - [[file:src/aeonik/joystick_fixer/core.clj][aeonik/joystick_fixer/core.clj]] :: Main logic for scanning =/dev/input/by-id= and =/dev/input/by-path=, correlating device symlinks, extracting device information (names, PCI/USB paths), and exporting persistent device maps. This is the entry point for the application.
     - [[file:src/aeonik/joystick_fixer/common.clj][aeonik/joystick_fixer/common.clj]] :: Shared utility functions for line diffing and serializing/unserializing data structures and parse trees.
     - [[file:src/aeonik/joystick_fixer/typing.clj][aeonik/joystick_fixer/typing.clj]] :: Notes, types, and documentation regarding device map structure and record types used in the project.
@@ -42,9 +40,12 @@ This project provides tools for managing and fixing joystick device symlinks and
     - [[file:src/aeonik/graph.clj][aeonik/graph.clj]] :: Dependency graphs (via Ubergraph/Loom/Morpheus) for code analysis and understanding relationships among project namespaces and vars.
     - [[file:src/aeonik/notebooks/evdev.clj][aeonik/notebooks/evdev.clj]] :: Notebook-style exploration of how device symlinks and mappings are determined, with docstring explanations—useful for both development and troubleshooting.
 
-- =resources/= — Stores exported device maps (in EDN), sample layouts, and fixture files.
+** =resources/= — Stores exported device maps (in EDN), sample layouts, and fixture files.
 
-- =README.org= — This file.
+*** [[file:resources/images/][Images for joystick maps]]
+*** [[file:resources/svg/][SVGs for interactive joystick maps]]
+
+** =README.org= — This file.
 
 * Contributors
 
@@ -56,7 +57,7 @@ All rights reserved for now.
 
 -----
 
-*Project Links:*
+* *Project Links:*
 - [[file:src/aeonik/joystick_fixer/core.clj][Main logic: core.clj]]
 - [[file:src/aeonik/joystick_fixer/qjoypad.clj][QJoyPad parser: qjoypad.clj]]
 - [[file:src/aeonik/joystick_fixer/xml.clj][XML parser/fixer: xml.clj]]
