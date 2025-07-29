@@ -19,3 +19,4 @@ pom.xml
 pom.xml.asc
 resources/2023-07-18T22:55:51.210155120_joystick_device_map.edn
 /.clerk/
+resources/*joystick_device_map.edn

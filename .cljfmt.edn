@@ -1,0 +1,13 @@
+{:indentation true
+ :remove-surrounding-whitespace? true
+ :remove-trailing-whitespace? true
+ :remove-consecutive-blank-lines? true
+ :indent-line-comments? true
+ :insert-missing-whitespace? true
+ :align-associative? true
+ :extra-indents {foo [[:inner 0]]}
+ :test (foo 1
+         2
+         {:a a
+          :aa a
+          :bbb bbb})}
