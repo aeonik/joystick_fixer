@@ -166,17 +166,17 @@
                d-q (e/diff d q {:str-diff :character :str-change-limit 0.8})
                v (e/get-edits d-q)
                ds (e/edits->script v)]
-            (println d)
-            (println q)
-            (println d-q)
-            (println v)
-            (println ds)
-            (println (e/get-size d-q))
-            (println (e/get-size ds))
-            (println (e/edit-distance d-q))
-            (println (e/edit-distance ds))
+           (println d)
+           (println q)
+           (println d-q)
+           (println v)
+           (println ds)
+           (println (e/get-size d-q))
+           (println (e/get-size ds))
+           (println (e/edit-distance d-q))
+           (println (e/edit-distance ds))
 
-            (data/diff (char-array d) (char-array q))))
+           (data/diff (char-array d) (char-array q))))
 
 (defn prefix [s n]
   (subs s 0 (min n (count s))))
@@ -325,21 +325,21 @@
   See core_backup.clj for the old code"
   [input-data]
   (map
-    (fn [[name data]]
-      (let [{:keys [evdev-path joydev-path]} data
-            {:keys [by-id by-path link usb-pci]} evdev-path
-            {:keys [pci usb]} usb-pci
-            {:keys [by-id by-path link]} joydev-path]
-        {:name        name
-         :evdev-info  {:evdev-id-path        by-id
-                       :evdev-physical-path  by-path
-                       :evdev-symlink-target link}
-         :joydev-info {:joydev-id-path        by-id
-                       :joydev-physical-path  by-path
-                       :joydev-symlink-target link}
-         :pci-address pci
-         :usb-address usb}))
-    input-data))
+   (fn [[name data]]
+     (let [{:keys [evdev-path joydev-path]} data
+           {:keys [by-id by-path link usb-pci]} evdev-path
+           {:keys [pci usb]} usb-pci
+           {:keys [by-id by-path link]} joydev-path]
+       {:name        name
+        :evdev-info  {:evdev-id-path        by-id
+                      :evdev-physical-path  by-path
+                      :evdev-symlink-target link}
+        :joydev-info {:joydev-id-path        by-id
+                      :joydev-physical-path  by-path
+                      :joydev-symlink-target link}
+        :pci-address pci
+        :usb-address usb}))
+   input-data))
 
 (defn update-usb-address
   "This function is needed to fix the usb-address field in the data due to regex changes."
@@ -349,7 +349,6 @@
         usb-address          (or (-> (split-usb-pci evdev-physical-path) :usb-address)
                                  (-> (split-usb-pci joydev-physical-path) :usb-address))]
     (assoc entry :usb-address usb-address)))
-
 
 (defn process-files-usb-fix! [file-path]
   (let [data         (read-edn-file file-path)
@@ -412,7 +411,7 @@
         date          timestamp-str
         joystick-data (read-edn-file file-path)             ; Replace with your EDN reading function
         table-data    (map #(assoc % :date date
-                                     :evdev-symlink-target (get-in % [:evdev-info :evdev-symlink-target]))
+                                   :evdev-symlink-target (get-in % [:evdev-info :evdev-symlink-target]))
                            joystick-data)]
     (pprint/pprint table-data)))
 

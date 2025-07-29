@@ -37,7 +37,7 @@ lrwxrwxrwx 1 root root 6 Jul 18 23:13 pci-0000:2c:00.1-usb-0:1.4.3:1.0-joystick 
 {:name "VPC_Stick_MT-50CM2"
  :evdev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Stick_MT-50CM2_FF-event-joystick",
  :evdev-symlink "/dev/input/event27",
- :evdev-physical-path"/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.3:1.0-event-joystick",
+ :evdev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.3:1.0-event-joystick",
  :joydev-id-path "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Stick_MT-50CM2_FF-joystick",
  :joydev-symlink "/dev/input/js3",
  :joydev-physical-path "/dev/input/by-path/pci-0000:2c:00.1-usb-0:1.4.3:1.0-joystick",

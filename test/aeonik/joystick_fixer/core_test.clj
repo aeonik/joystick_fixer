@@ -20,35 +20,25 @@
                                                 get-joystick-info
                                                 process-all-joysticks
                                                 sort-joysticks
-                                                transform-data
-                                                ]]))
-
+                                                transform-data]]))
 
 (def resources
-  [
-   {:name "event20"}
+  [{:name "event20"}
    {:name "js1"}
    {:name "by-id"
-    :content [
-              {:name "usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick"}
+    :content [{:name "usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick"}
               {:name "usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-event-joystick"}
               {:name "usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick"}
-              {:name "usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-event-joystick"}
-              ]
-    }
+              {:name "usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-event-joystick"}]}
+
    {:name "event21"}
    {:name "by-path"
-    :content [
-              {:name "pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"}
+    :content [{:name "pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"}
               {:name "pci-0000:2c:00.1-usb-0:1.4.4:1.0-event-joystick"}
               {:name "pci-0000:2c:00.1-usb-0:1.4.2:1.0-event-joystick"}
-              {:name "pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick"}
-              ]
-    }
-   {:name "js0"}
-   ]
-  )
+              {:name "pci-0000:2c:00.1-usb-0:1.4.4:1.0-joystick"}]}
 
+   {:name "js0"}])
 
 (comment (def example-joystick-map {:name        "VPC Throttle MT-50CM3"
                                     :evdev-info  {:evdev-id-path        "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Throttle_MT-50CM3_FF-event-joystick"
@@ -71,7 +61,6 @@
    :pci-address "0000:2c:00.1"
    :usb-address "usb-0:1.4.2:1.0"})
 
-
 (def device-paths {:by-id "test/resources/by-id"
                    :by-path "test/resources/by-path"})
 
@@ -81,35 +70,29 @@
   (testing "get-joystick-names"
     (is (= (get-joystick-names device-paths)
            '("L-VPC_Stick_MT-50CM2"
-              "VPC_SharKa-50_Panel"))))
-  )
-
+             "VPC_SharKa-50_Panel")))))
 
 (deftest filename->joystick-name-test
   (testing "filename->joystick-name"
     (is (= (filename->joystick-name "usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick")
            "VPC_SharKa-50_Panel"))
     (is (= (filename->joystick-name "usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick")
-           "L-VPC_Stick_MT-50CM2")))
-  )
+           "L-VPC_Stick_MT-50CM2"))))
 
 (deftest file->symlink-test
   (testing "file->symlink"
     (is (= (file->symlink (io/file "test/resources/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick"))
            {:link   "test/resources/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick"
             :target "/home/dave/Projects/joystick_fixer/test/resources/js1"}
-    (is (= (file->symlink (io/file "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"))
-           {:link   "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"
-            :target "/home/dave/Projects/joystick_fixer/test/resources/js1"}
-           )))
-  )))
+           (is (= (file->symlink (io/file "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"))
+                  {:link   "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"
+                   :target "/home/dave/Projects/joystick_fixer/test/resources/js1"}))))))
 
 (deftest split-usb-pci-test
   (testing "split-usb-pci"
     (is (= (split-usb-pci "pci-0000:00:14.0-usb-0:2:1.0-event-joystick")
            {:pci-address "0000:00:14.0"
             :usb-address "0:2:1.0"}))))
-
 
 (comment (get-corresponding-path (:by-path device-paths) (file->symlink (io/file by-id-file))))
 (deftest get-corresponding-path-test
@@ -121,52 +104,36 @@
     (is (= (get-corresponding-path (:by-path device-paths) (file->symlink (io/file "test/resources/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick")))
            "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"))
     (is (= (get-corresponding-path (:by-id device-paths) (file->symlink (io/file "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick")))
-           "test/resources/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick"))
-  ))
+           "test/resources/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick"))))
 
 (deftest by-id->by-path-test
   (testing "by-id->by-path"
     (is (= (by-id->by-path "test/resources/by-id/usb-VIRPIL_Controls_20220720_VPC_SharKa-50_Panel_FF-joystick")
-           "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"))
-  ))
+           "test/resources/by-path/pci-0000:2c:00.1-usb-0:1.4.2:1.0-joystick"))))
 
-(deftest by-path->by-id-test
-  )
+(deftest by-path->by-id-test)
 
-(deftest search-path-test
+(deftest search-path-test)
 
-  )
+(deftest regex-search->id-symlinks-test)
 
-(deftest regex-search->id-symlinks-test
-  )
+(deftest correlate-joystick-name-test)
 
-(deftest correlate-joystick-name-test
-  )
+(deftest symlink-target->evdev-info-test)
 
-(deftest symlink-target->evdev-info-test
-  )
+(deftest symlink-target->joydev-info-test)
 
-(deftest symlink-target->joydev-info-test
-  )
+(deftest symlink-target->info-test)
 
-(deftest symlink-target->info-test
-  )
+(deftest join-evdev+joydev-info-test)
 
-(deftest join-evdev+joydev-info-test
-  )
+(deftest get-joystick-info-test)
 
-(deftest get-joystick-info-test
-  )
+(deftest process-all-joysticks-test)
 
-(deftest process-all-joysticks-test
-  )
+(deftest sort-joysticks-test)
 
-(deftest sort-joysticks-test
-  )
-
-(deftest transform-data-test
-  )
-
+(deftest transform-data-test)
 
 (deftest symlink->target-test
   (testing "symlink->target"

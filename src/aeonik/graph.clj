@@ -9,7 +9,6 @@
 (def arguments ["src/aeonik/joystick_fixer/core.clj"])
 (def exclude-regexp (re-pattern "clojure.core/.*|:clj-kondo/unknown-namespace/.*"))
 
-
 (defn- ext-vars-for-var [graph var all-internal-vars]
   (let [all-subgraph-vars (m/->nodes (m/node->subgraph graph var))]
     (set/difference (set all-subgraph-vars)
@@ -37,11 +36,8 @@
 
 (uber/pprint (uber/remove-nodes uber-graph "aeonik.joystick-fixer.core/"))
 
-
-
 (def new-graph (uber/remove-nodes uber-graph "aeonik.joystick-fixer.core/"))
 (uber/pprint new-graph)
-
 
 (uber/viz-graph new-graph
                 {:save

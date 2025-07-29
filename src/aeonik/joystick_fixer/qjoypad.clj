@@ -10,7 +10,6 @@
   (:import [java.nio.file Files Paths]
            (org.apache.commons.io FileUtils)))
 
-
 (def file "~/qjoypad_virpils.lyt")
 
 ;; Define a schema for a joystick.
@@ -49,41 +48,39 @@
                    <number> = #'[0-9]+'")
 (def qjoypad-parser (instaparse/parser qjoypad-ebnf :output-format :hiccup))
 
-
-
 (cmb/ebnf qjoypad-ebnf)
 (def qjoypad-grammar-combinator
   {:file (cmb/cat
-           (cmb/nt :header)
-           (cmb/plus (cmb/nt :joystick)))
+          (cmb/nt :header)
+          (cmb/plus (cmb/nt :joystick)))
    :header (cmb/cat
-             (cmb/string "# QJoyPad 4.3 Layout File")
-             (cmb/nt :newlines))
+            (cmb/string "# QJoyPad 4.3 Layout File")
+            (cmb/nt :newlines))
    :joystick (cmb/cat
-               (cmb/string "Joystick")
-                (cmb/nt :space)
-               (cmb/nt :joystick_number)
-               (cmb/nt :space)
-               (cmb/string "{")
-               (cmb/nt :newlines)
-               (cmb/star (cmb/nt :key_map))
-               (cmb/string "}")
-               (cmb/nt :newlines))
+              (cmb/string "Joystick")
+              (cmb/nt :space)
+              (cmb/nt :joystick_number)
+              (cmb/nt :space)
+              (cmb/string "{")
+              (cmb/nt :newlines)
+              (cmb/star (cmb/nt :key_map))
+              (cmb/string "}")
+              (cmb/nt :newlines))
    :key_map (cmb/cat
-              (cmb/nt :tab)
-              (cmb/nt :joystick_button)
-              (cmb/nt :type)
-              (cmb/opt (cmb/nt :newlines)))
+             (cmb/nt :tab)
+             (cmb/nt :joystick_button)
+             (cmb/nt :type)
+             (cmb/opt (cmb/nt :newlines)))
    :joystick_button (cmb/cat
-                      (cmb/string "Button")
-                      (cmb/nt :space)
-                      (cmb/nt :number)
-                      (cmb/string ":")
-                      (cmb/nt :space))
+                     (cmb/string "Button")
+                     (cmb/nt :space)
+                     (cmb/nt :number)
+                     (cmb/string ":")
+                     (cmb/nt :space))
    :type (cmb/cat
-           (cmb/regexp "\\w+")
-           (cmb/nt :space)
-           (cmb/nt :type_button))
+          (cmb/regexp "\\w+")
+          (cmb/nt :space)
+          (cmb/nt :type_button))
    :type_button (cmb/nt :number)
    :joystick_number (cmb/nt :number)
    :number (cmb/regexp "\\d+")
@@ -128,8 +125,8 @@
 (instaparse/transform transformations2 parse-tree)
 
 (comment (-> file
-    (instaparse/parse qjoypad-parser)
-    (instaparse/transform transformations)))
+             (instaparse/parse qjoypad-parser)
+             (instaparse/transform transformations)))
 
 (defn serialize-parse-tree
   "Unparses the tree
@@ -148,13 +145,13 @@
 ;; Trying to come up with a way to transform arbitrary grammars
 (defn transform-joystick [joystick-transforms tree]
   (clojure.walk/postwalk
-    (fn [node]
-      (if (and (vector? node) (= :joystick (first node)))
-        (let [old-joystick-number (second node)
-              new-joystick-number (joystick-transforms old-joystick-number)]
-          (assoc node 1 new-joystick-number))
-        node))
-    tree))
+   (fn [node]
+     (if (and (vector? node) (= :joystick (first node)))
+       (let [old-joystick-number (second node)
+             new-joystick-number (joystick-transforms old-joystick-number)]
+         (assoc node 1 new-joystick-number))
+       node))
+   tree))
 
 (transform-joystick joystick-tranforms parse-tree)
 
@@ -170,19 +167,19 @@
                 "replacement text"))
 
 (comment (defn replace-joystick-numbers-in-text [text parse-tree]
-  (let [replacement-ranges (->> parse-tree
-                                (tree-seq vector? seq)
-                                (filter #(= :joystick_number (first %)))
-                                (map instaparse/span))
-        sorted-ranges (sort-by first replacement-ranges)
-        replacements (map (fn [[start end]]
-                            (let [old-number (Integer/parseInt (subs text start end))
-                                  new-number (get joystick-transforms old-number)]
-                              (str new-number)))
-                          sorted-ranges)
-        parts (map (fn [[start end]] (subs text start end))
-                   (partition 2 1 (interleave (cons 0 (map second sorted-ranges)) (cons (dec (count text)) nil))))]
-    (apply str (interleave parts replacements)))))
+           (let [replacement-ranges (->> parse-tree
+                                         (tree-seq vector? seq)
+                                         (filter #(= :joystick_number (first %)))
+                                         (map instaparse/span))
+                 sorted-ranges (sort-by first replacement-ranges)
+                 replacements (map (fn [[start end]]
+                                     (let [old-number (Integer/parseInt (subs text start end))
+                                           new-number (get joystick-transforms old-number)]
+                                       (str new-number)))
+                                   sorted-ranges)
+                 parts (map (fn [[start end]] (subs text start end))
+                            (partition 2 1 (interleave (cons 0 (map second sorted-ranges)) (cons (dec (count text)) nil))))]
+             (apply str (interleave parts replacements)))))
 
 ;; Print with metadata
 (pprint (meta parse-tree))

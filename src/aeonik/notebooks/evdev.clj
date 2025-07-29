@@ -32,7 +32,6 @@
                        #(update-in % [:nextjournal/render-opts :language] (fn [lang] (or lang "clojure")))
                        (clerk/update-val (fn [v] (str/trim (with-out-str (z/zprint v {:map {:comma? true :indent 0 :justify? true}}))))))})
 
-
 (def evdev-regexp #"-event-joystick$")
 (def joydev-regexp #"(?<!-event)-joystick$")
 (def evdev-path-regexp #"event\d+$")
@@ -105,7 +104,6 @@
 ^{::clerk/viewer zprint-code-viewer ::clerk/auto-expand-results? true}
 (def phyiscal-path-links (map (comp file->symlink io/file) paths))
 
-
 ;; #### Printing the id path links, they are usually serial IDs from the vendor:
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
 ^{::clerk/viewer zprint-code-viewer ::clerk/auto-expand-results? true}
@@ -129,8 +127,8 @@
   (spyx path-map)
   (let [pci-usb (split-usb-pci (first (keys path-map)))]
     (assoc path-map
-      :pci-address (:pci-address pci-usb)
-      :usb-address (:usb-address pci-usb))))
+           :pci-address (:pci-address pci-usb)
+           :usb-address (:usb-address pci-usb))))
 
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
 ^{::clerk/viewer zprint-code-viewer ::clerk/auto-expand-results? true}
@@ -141,7 +139,7 @@
   "Associates the joystick name to each record."
   [path-map]
   (assoc path-map
-    :name (second (re-find extract-virpil-name-rexexp (first (keys path-map))))))
+         :name (second (re-find extract-virpil-name-rexexp (first (keys path-map))))))
 
 ;; #### Associating the joystick name to each map, this only works for Virpil at the moment:
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
@@ -152,19 +150,14 @@
 ^{::clerk/viewer zprint-code-viewer ::clerk/auto-expand-results? true}
 (assoc-joystick-name {"/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Stick_MT-50CM2_FF-event-joystick" "/dev/input/event26"})
 
-
-
 (def updated-phyiscal-path-links
   (map assoc-pci-usb phyiscal-path-links))
-
-
 
 ^{:nextjournal.clerk/visibility {:code :show :result :hide}}
 
 (def graph (->> (concat phyiscal-path-links id-links)
                 (reduce into [])
                 (apply ug/multidigraph)))
-
 
 ^{:nextjournal.clerk/visibility {:code :show :result :show}}
 ^{::clerk/viewer (assoc v/string-viewer :page-size 50000) ::clerk/auto-expand-results? true}

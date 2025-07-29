@@ -36,11 +36,11 @@
   (let [orig-diff (:diff (diff-last-two))
         minimized (ddiff/minimize (diff-last-two))
         output    (assoc minimized
-                    :diff
-                    (map (fn [min entry]
-                           (assoc min :name (:name entry)))
-                         (:diff minimized)
-                         orig-diff))]
+                         :diff
+                         (map (fn [min entry]
+                                (assoc min :name (:name entry)))
+                              (:diff minimized)
+                              orig-diff))]
     (ddiff/pretty-print output)))
 
 (defn -main [& args]

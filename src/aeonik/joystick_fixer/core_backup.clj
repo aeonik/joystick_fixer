@@ -76,7 +76,6 @@
 
 (get-by-path-from-by-id "/dev/input/event27")
 
-
 (defn lookup-all-symlinks [path]
   (->> (io/file path)
        (.listFiles)
@@ -134,8 +133,8 @@
     (mapcat reverse-symlink-lookup->symlink-map
             (repeat path-key)
             (map io/file (search-path
-                           (device-paths path-key)
-                           regex)))))
+                          (device-paths path-key)
+                          regex)))))
 (by-id->symlink-map #"VPC")
 ;; => ([:path
 ;;      {:by-id
@@ -150,7 +149,6 @@
 ;;       "/dev/input/by-id/usb-VIRPIL_Controls_20220720_L-VPC_Stick_MT-50CM2_FF-joystick",
 ;;       :link "/dev/input/js4"}]
 
-
 (comment (defn merged-id-path-map
            "Look up all the symlinks in :path :by-id, and merge them into a single map."
            [device-paths]
@@ -161,8 +159,8 @@
                              (zipmap (map first symlink-map)
                                      (map second symlink-map))))
                          (search-path
-                           (get device-paths path-key)
-                           (re-pattern (get-joystick-names device-paths)))))))) ; assuming get-joystick-names is a function in your context
+                          (get device-paths path-key)
+                          (re-pattern (get-joystick-names device-paths)))))))) ; assuming get-joystick-names is a function in your context
 
 (comment (merged-id-path-map device-paths))
 
@@ -174,8 +172,8 @@
     (mapcat reverse-symlink-lookup->symlink-map
             (repeat path-key)
             (map io/file (search-path
-                           (device-paths path-key)
-                           regex)))))
+                          (device-paths path-key)
+                          regex)))))
 (defn add-names-to-merged-map [merged-map]
   (let [joystick-names   (get-joystick-names device-paths)
         joystick-regexes (map re-pattern joystick-names)
@@ -221,7 +219,6 @@
                                   usb-pci (split-usb-pci by-path)]
                               [dev-type (assoc (second path-map) :by-path by-path :usb-pci usb-pci)])) v))]) joystick-map))
 
-
 (defn get-joystick-map
   "Returns a map containing the joystick name and a map of the path, link, and
    symlink. The path includes both by-id and by-path."
@@ -256,8 +253,6 @@
             {}
             joystick-names)))
 
-
-
 (def joystick-names (get-joystick-names device-paths))
 (def joystick-regexes (map #(re-pattern (str "_" % "_")) joystick-names))
 (let [joystick-names   (get-joystick-names device-paths)
@@ -288,8 +283,6 @@
                                   dev-type (if (re-find #"event" link) :evdev-path :joydev-path)
                                   by-path (first (get-by-path-from-by-id link))]
                               [dev-type (assoc (second path-map) :by-path by-path)])) v))]) joystick-map))
-
-
 
 (mapcat reverse-symlink-lookup->symlink-map (repeat :by-id) (map io/file (search-path "/dev/input/by-id" #"VPC")))
 ;; => ([:path
@@ -365,7 +358,6 @@
 ;;      :usb "0:1.4.3:1.0"}}
 
 (get-joystick-maps "/dev/input/by-id/usb-VIRPIL_Controls_20220720_VPC_Stick_MT-50CM2_FF-event-joystick")
-
 
 (defn get-joystick-maps
   "Returns a map containing the joystick name and a map of the path, link, and
