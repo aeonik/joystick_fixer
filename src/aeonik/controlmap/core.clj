@@ -108,75 +108,141 @@
                    :action (:name  parent)})))
          (into [])))))
 
+(defn find-joystick-bindings
+  "Returns a list of enlive structures containing the action maps of a joystick. Needs to be filtered to be useful"
+  [actionmaps js-num]
+  (let [prefix (str "js" js-num "_")]
+    (f/with-forest (f/new-forest)
+      (map f/bush->enlive (-> actionmaps
+                              (f/add-tree-enlive)
+                              (f/find-paths-with [:** {:input :*}]
+                                                 #(str/starts-with? (f/hid->attr (last %) :input) prefix))
+                              (f/format-paths))))))
+(comment
+  (->> (find-joystick-bindings actionmaps 5)
+       (map #(html/select % [:actionmap])))
+
+  (->> (find-joystick-bindings actionmaps 5)
+       (map #(html/select % [[:action (html/attr? :name)]])))
+
+  (->> (find-joystick-bindings actionmaps 5)
+       (mapcat #(html/select % [[:action (html/attr? :name)]]))
+       (map #(html/attr-values % :name)))
+
+  (->> (find-joystick-bindings actionmaps 5)
+       (mapcat #(html/select % [[:action (html/attr? :name)]]))
+       (into {} (map (fn [action]
+                       [(get-in action [:attrs :name])
+                        (-> action
+                            (html/select [:rebind])
+                            first
+                            (get-in [:attrs :input]))]))))
+
+  (-> xml-resource
+      (html/select [:action])))
+
+(defn joystick-action-mappings
+  "Returns a vector of maps with action names, joystick inputs, and SVG button mappings."
+  [actionmaps joystick-num]
+  (->> (find-joystick-bindings actionmaps joystick-num)
+       (mapcat #(html/select % [[:action (html/attr? :name)]]))
+       (map (fn [action]
+              (let [input (-> action
+                              (html/select [:rebind])
+                              first
+                              (get-in [:attrs :input]))
+                    button-num (when input
+                                 (second (re-find #"button(\d+)" input)))]
+                {:action (get-in action [:attrs :name])
+                 :input input
+                 :svg-input (when button-num (str "btn_" button-num))})))))
+
+(comment
+  (joystick-action-mappings actionmaps 1)
+
+  (html/select svg [[:text (html/attr= :data-for "btn_27")]])
+
+  (html/at svg
+           [[:text (html/attr= :data-for "btn_27")]]
+           (html/content "test"))
+
+  (let [mappings (joystick-action-mappings actionmaps 1)]
+    (reduce (fn [svg-doc {:keys [svg-input action]}]
+              (if svg-input
+                (html/at svg-doc
+                         [[:text (html/attr= :data-for svg-input)]]
+                         (html/content action))
+                svg-doc))
+            svg
+            mappings))
+
+  (->> (let [mappings (joystick-action-mappings actionmaps 1)]
+         (reduce (fn [svg-doc {:keys [svg-input action]}]
+                   (if svg-input
+                     (html/at svg-doc
+                              [[:text (html/attr= :data-for svg-input)]]
+                              (html/content action))
+                     svg-doc))
+                 svg
+                 mappings))
+       html/emit*
+       (apply str)
+       (spit "output.svg")))
+
+(defn update-svg-with-joystick-mappings
+  "Updates SVG text elements with joystick action mappings."
+  [svg actionmaps joystick-num]
+  (let [mappings (joystick-action-mappings actionmaps joystick-num)]
+    (reduce (fn [svg-doc {:keys [svg-input action]}]
+              (if svg-input
+                (html/at svg-doc
+                         [[:text (html/attr= :data-for svg-input)]]
+                         (html/content action))
+                svg-doc))
+            svg
+            mappings)))
+
+(comment (def updated-svg (update-svg-with-joystick-mappings svg actionmaps 2))
+
+         (->> updated-svg
+              html/emit*
+              (apply str)
+              (spit "updated-panel.svg"))
+
+         (let [instance 4
+               svg-location (instance->svg instance)
+               svg (get svg-roots svg-location)
+               updated-svg (update-svg-with-joystick-mappings svg actionmaps instance)]
+           (->> updated-svg
+                html/emit*
+                (apply str)
+                (spit "updated-panel.svg"))))
+
 (defn parse-input [s]
   (when-let [[_ inst btn] (re-find #"js(\d+)_button(\d+)" s)]
     {:instance (parse-long inst)
      :btn      (parse-long btn)}))
 
-;; ChatGPT Dreck below
-(comment
-  (defn apply-binding-to-svg!
-    [svg-root {:keys [input action] :as _binding}]
-    ;; parse the Star‑Citizen input string first
-    (when-let [{:keys [btn]} (parse-input input)] ; btn nil ⇒ ignore axis bindings
-      (when btn
-        ;; make sure path ops run in the SAME forest that svg-root lives in
-        (binding [f/*forest* (:forest svg-root)] ; `:forest` is added by add-tree-enlive
-          (doseq [hid (f/find-hids svg-root
-                                   [:** {:tag   :text
-                                         :attrs {:data-for (str "btn_" btn)}}])]
-            (f/set-node (f/hid->node hid) [action])))))
-    svg-root)
+(defn extract-button-from-id
+  "Extract button number from id like 'lbl_btn_41' -> 41"
+  [id]
+  (when-let [[_ btn] (re-find #"lbl_btn_(\d+)" id)]
+    (parse-long btn)))
 
-  (defn btn-hids
-    "Return a (possibly empty) seq of HIDs for <text data‑for=\"btn_N\"> nodes."
-    [svg-root btn]
-    (f/with-forest (f/new-forest)
-      (f/find-hids (f/add-tree-enlive svg-root)
-                   [:** :data-for "btn_24"])))
+(defn generate-all-updated-svgs! [actionmaps]
+  (doseq [[instance svg-location] instance->svg]
+    (when-let [svg (get svg-roots svg-location)]
+      (let [updated-svg (update-svg-with-joystick-mappings svg actionmaps instance)
+            output-filename (str "out/updated_" (last (clojure.string/split svg-location #"/")))]
+        (->> updated-svg
+             html/emit*
+             (apply str)
+             (spit output-filename))
+        (println "Generated:" output-filename "for instance" instance)))))
 
-  (let [svg-root (svg-roots "svg/panel_1.svg")]
-    (btn-hids svg-root 10))
-
-  (defn apply-all-bindings-to-svg!
-    [svg-root bindings]
-    ;; run all path ops inside the forest the svg-root lives in
-    (binding [f/*forest* (:forest svg-root)]
-      (doseq [{:keys [input action]} bindings
-              :let [{:keys [btn]} (parse-input input)
-                    _              (when btn (println "Binding input:" input "with action:" action "and button:" btn))]
-              :when btn]                ; skip axis entries
-        (doseq [hid (f/find-hids svg-root
-                                 [:** {:tag   :text
-                                       :attrs {:data-for (str "btn_" btn)}}])]
-          (f/set-node (f/hid->node hid) [action])))
-      svg-root))
-
-  (let [bindings  (extract-input-action-mappings actionmaps)
-        svg-root  (first svg-roots)]
-    (apply-all-bindings-to-svg! svg-root bindings))
-
-  (defn apply-binding! [{:keys [input action]}]
-    (when-let [{:keys [instance btn]} (parse-input input)]
-      (when-let [svg-root (svg-roots (instance->svg instance))]
-        (when btn
-          (doseq [lbl (f/find-hid svg-root [:** {:tag :text
-                                                 :attrs {:data-for (str "btn_" btn)}}])]
-            (f/set-node lbl [action]))))))
-
-  (f/with-forest (f/new-forest)
-    (let [root-hid (f/add-tree-enlive actionmaps)
-          bindings  (->> (f/find-paths root-hid [:** :rebind])
-                         (map (fn [path]
-                                (let [child  (f/hid->node (peek path))
-                                      parent (f/hid->node (peek (pop path)))]
-                                  {:input  (:input child)
-                                   :action (:name  parent)})))
-                         (into []))]
-      (doseq [b bindings]
-        (apply-binding! b))
-      ;; finally, write each mutated SVG back to disk
-      ))
-
-  (doseq [b (extract-input-action-mappings actionmaps)]
-    (apply-binding! b)))
+(defn -main []
+  (let [actionmaps (-> "actionmaps.xml"
+                       io/resource
+                       io/reader
+                       tx/parse-streaming)]
+    (generate-all-updated-svgs! actionmaps)))

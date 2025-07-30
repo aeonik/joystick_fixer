@@ -37,7 +37,7 @@
 
       .button-text {
         pointer-events: none;
-        font-size: 13px;
+        font-size: 10px;
         font-weight: 500;
         text-anchor: middle;
         dominant-baseline: middle;
@@ -82,7 +82,7 @@
         gap: 6px;
       }
     </style>
-  <image href="resources/vpc_alpha_L.png" x="0" y="0" width="1341" height="948"/>
+  <image href="../resources/images/vpc_alpha_L.png" x="0" y="0" width="1341" height="948"/>
   <g id="buttons">
     <rect class="button-box" rx="10" ry="10" x="962.92" y="376.23" width="105.33" height="44.86" fill="rgba(0,255,0,0)" stroke="rgba(0,255,0,0)" id="btn_1"/>
     <rect class="button-box" rx="10" ry="10" fill="rgba(0,255,0,0)" stroke="rgba(0,255,0,0)" x="962.73" y="428.89" width="105.33" height="44.86" id="btn_2"/>
