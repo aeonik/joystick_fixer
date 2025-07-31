@@ -26,9 +26,9 @@
   {:joystick-number 4
    :buttons [{:button-number 22, :type "key", :type-number 67}
              {:button-number 30, :type "key", :type-number 64}]})
-(m/validate joystick-schema joystick-test-data)
+(comment (m/validate joystick-schema joystick-test-data)
 
-(def file (slurp "/home/dave/qjoypad_virpils.lyt"))
+         (def file (slurp "/home/dave/qjoypad_virpils.lyt")))
 
 (def joystick-tranforms {1 2
                          2 3
@@ -48,7 +48,7 @@
                    <number> = #'[0-9]+'")
 (def qjoypad-parser (instaparse/parser qjoypad-ebnf :output-format :hiccup))
 
-(cmb/ebnf qjoypad-ebnf)
+(comment (cmb/ebnf qjoypad-ebnf))
 (def qjoypad-grammar-combinator
   {:file (cmb/cat
           (cmb/nt :header)
@@ -116,13 +116,13 @@
         parser (instaparse/parser grammar parser-options)]
     (instaparse/parse parser file parse-options)))
 
-(parse-qjoypad file :grammar qjoypad-ebnf :output-format :hiccup)
-(parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive :unhide :all)
+(comment (parse-qjoypad file :grammar qjoypad-ebnf :output-format :hiccup)
+         (parse-qjoypad file :grammar qjoypad-ebnf :output-format :enlive :unhide :all))
 
 (def parse-tree (instaparse/parse qjoypad-parser file :unhide :all))
 (def parse-tree-combinator (instaparse/parse qjoypad-parser-combinator file :unhide :all))
 
-(instaparse/transform transformations2 parse-tree)
+(comment (instaparse/transform transformations2 parse-tree))
 
 (comment (-> file
              (instaparse/parse qjoypad-parser)
@@ -140,7 +140,7 @@
 (def unparsed-tree (serialize-parse-tree parse-tree))
 
 ;; Compare strings
-(= file unparsed-tree)
+(comment (= file unparsed-tree))
 
 ;; Trying to come up with a way to transform arbitrary grammars
 (defn transform-joystick [joystick-transforms tree]
@@ -153,7 +153,7 @@
        node))
    tree))
 
-(transform-joystick joystick-tranforms parse-tree)
+(comment (transform-joystick joystick-tranforms parse-tree))
 
 ;; Text slinging, avoid this if possible, but it can work if the grammar is simple enough, or tolerant to index changes
 (defn replace-text [text start end new-text]
@@ -182,13 +182,13 @@
              (apply str (interleave parts replacements)))))
 
 ;; Print with metadata
-(pprint (meta parse-tree))
+(comment (pprint (meta parse-tree))
 
-;; Get a joystick from the hiccup parse tree using keywords :file and :joystick
-(get-in parse-tree [:header :joystick])
+         ;; Get a joystick from the hiccup parse tree using keywords :file and :joystick
+         (get-in parse-tree [:header :joystick])
 
-(get-in parse-tree [2])
-(meta (get-in parse-tree [2]))
+         (get-in parse-tree [2])
+         (meta (get-in parse-tree [2])))
 
 (comment
   (instaparse/span parse-tree)

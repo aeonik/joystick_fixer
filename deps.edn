@@ -26,4 +26,7 @@
  :aliases {:dev      {:extra-paths ["dev"]}
            :morpheus {:extra-deps {thomasa/morpheus {:git/url "https://github.com/benedekfazekas/morpheus.git"
                                                      :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}}
-                      :main-opts  ["-m" "thomasa.morpheus.main"]}}}
+                      :main-opts  ["-m" "thomasa.morpheus.main"]}
+           :build {:deps {io.github.clojure/tools.build {:mvn/version "0.9.4"}}
+                   :ns-default build}
+           :controlmap {:main-opts ["-m" "aeonik.controlmap.core"]}}}

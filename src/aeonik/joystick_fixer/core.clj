@@ -304,7 +304,7 @@
 
 (comment (map promote-and-order (process-all-joysticks)))
 
-(dissoc-in (first (process-all-joysticks)) [:evdev-info])
+(comment (dissoc-in (first (process-all-joysticks)) [:evdev-info]))
 
 (comment (defn sort-joysticks [joystick-map]
            (sort-by :name joystick-map)))
@@ -462,7 +462,7 @@
 
 (def catted-edn (slurp (io/resource "cat_joystick.edn")))
 
-(read-edn-file (io/resource "cat_joystick.edn"))
+(comment  (read-edn-file (io/resource "cat_joystick.edn")))
 
 (require '[clojure.data.csv :as csv])
 

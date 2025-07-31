@@ -26,11 +26,11 @@
 (def analysis (m/lint-analysis arguments))
 (def graph (m/var-deps-graph analysis nil exclude-regexp))
 (def all-internal-vars (m/->vars analysis exclude-regexp))
-(def internal-vars (if var [var] all-internal-vars))
+;; (def internal-vars (if var [var] all-internal-vars))
 (def all-vars (m/->nodes graph))
-(def ext-vars (if var
-                (ext-vars-for-var graph var all-internal-vars)
-                (set/difference (set all-vars) (set internal-vars))))
+;; (def ext-vars (if var
+;;                 (ext-vars-for-var graph var all-internal-vars)
+;;                 (set/difference (set all-vars) (set internal-vars))))
 
 (def uber-graph (uber/multidigraph (:adj graph)))
 

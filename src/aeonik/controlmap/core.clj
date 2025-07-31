@@ -1,10 +1,11 @@
 (ns aeonik.controlmap.core
   (:require
+   [aeonik.controlmap.discovery :as discovery]
+   [aeonik.controlmap.index :as index]
    [clojure.data.xml :as xml]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [aeonik.controlmap.discovery :as discovery]
    [net.cgrand.enlive-html :as html]
    [riveted.core :as vtd]
    [tupelo.forest :as f]
@@ -313,7 +314,7 @@
 (defn generate-svg-for-instance
   "Generates an updated SVG for a specific joystick instance"
   [actionmaps instance svg-location output-dir]
-  (when-let [svg (get @svg-roots svg-location)]
+  (when-let [svg (get svg-roots svg-location)]
     (let [updated-svg (update-svg-with-mappings svg actionmaps instance)
           filename (last (str/split svg-location #"/"))
           svg-config (get-in @config [:mapping :svg-generation])
@@ -339,7 +340,7 @@
                   (generate-svg-for-instance actionmaps instance svg-location output-dir)))
           (into [])))))
 
-(comment (def updated-svg (update-svg-with-joystick-mappings svg actionmaps 4))
+(comment (def updated-svg (update-svg-with-mappings svg actionmaps 4))
 
          (->> updated-svg
               html/emit*
@@ -349,7 +350,7 @@
          (let [instance 4
                svg-location (instance->svg instance)
                svg (get svg-roots svg-location)
-               updated-svg (update-svg-with-joystick-mappings svg actionmaps instance)]
+               updated-svg (update-svg-with-mappings svg actionmaps instance)]
            (->> updated-svg
                 html/emit*
                 (apply str)
@@ -367,7 +368,7 @@
                              (catch Exception _ false))]
     (merge discovery-info
            {:actionmaps-loadable? actionmaps-loaded?
-            :svg-resources-loaded (count @svg-roots)
+            :svg-resources-loaded (count svg-roots)
             :available-instances (keys (get-legacy-instance-mapping))})))
 
 (defn print-status!
@@ -403,12 +404,18 @@
     (do
       (println "Generating SVGs...")
       (let [generated (generate-all-svgs! actionmaps)]
-        (println "Successfully generated" (count generated) "SVG files")))
+        (println "Successfully generated" (count generated) "SVG files")
+
+        ;; Generate HTML index
+        (println "Generating HTML index...")
+        (index/generate-index-with-output-dir!)
+
+        ;; Show final status
+        (index/print-svg-status!)))
     (do
       (println "ERROR: Could not load actionmaps!")
       (println "Please check your Star Citizen installation or set SC_ACTIONMAPS_PATH")
       (System/exit 1))))
-
 ;; =============================================================================
 ;; Development Helpers
 ;; =============================================================================
