@@ -28,11 +28,17 @@
     }
     .button-text {
       pointer-events: none;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 500;
-      text-anchor: middle;
+      text-anchor: start;
       dominant-baseline: middle;
       fill: #444;
+      transform: translate(-50px, 0);
+    }
+    .button-text {
+      paint-order: stroke;
+      stroke: rgba(255, 255, 255, 1);
+      stroke-width: 4;
     }
   </style>
   <image href="../resources/images/vpc_panel_2.png" x="0" y="0" width="1341" height="948"/>
@@ -82,130 +88,130 @@
   </g>
   <g id="labels">
     <text class="button-text" id="lbl_btn_1" data-for="btn_1" x="930.93" y="89.97">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_2" data-for="btn_2" x="1075.28" y="89.97">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_3" data-for="btn_3" x="930.93" y="142.64">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_4" data-for="btn_4" x="1075.28" y="142.64">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_5" data-for="btn_5" x="1075.28" y="707.34">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_6" data-for="btn_6" x="1219.62" y="707.34">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_7" data-for="btn_7" x="1075.28" y="760.98">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_8" data-for="btn_8" x="1218.65" y="760.01">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_9" data-for="btn_9" x="1075.28" y="813.65">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_10" data-for="btn_10" x="1219.62" y="812.68">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_11" data-for="btn_11" x="158.49" y="623.47">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_12" data-for="btn_12" x="158.49" y="569.82">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_13" data-for="btn_13" x="302.83" y="622.49">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_14" data-for="btn_14" x="302.83" y="568.85">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_15" data-for="btn_15" x="447.18" y="622.49">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_16" data-for="btn_16" x="447.18" y="568.85">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_17" data-for="btn_17" x="158.49" y="710.27">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_18" data-for="btn_18" x="158.49" y="763.91">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_19" data-for="btn_19" x="302.83" y="709.29">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_20" data-for="btn_20" x="302.83" y="762.94">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_21" data-for="btn_21" x="447.18" y="709.29">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_22" data-for="btn_22" x="447.18" y="762.94">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_23" data-for="btn_23" x="1075.28" y="284.06">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_24" data-for="btn_24" x="1075.28" y="230.42">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_25" data-for="btn_25" x="1219.62" y="283.08">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_26" data-for="btn_26" x="1220.60" y="230.42">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_27" data-for="btn_27" x="1075.28" y="482.05">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_28" data-for="btn_28" x="1219.62" y="481.07">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_29" data-for="btn_29" x="1075.28" y="569.82">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_30" data-for="btn_30" x="1218.65" y="568.85">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_31" data-for="btn_31" x="157.51" y="346.48">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_32" data-for="btn_32" x="158.49" y="292.84">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_33" data-for="btn_33" x="157.51" y="399.15">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_34" data-for="btn_34" x="301.86" y="346.48">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_35" data-for="btn_35" x="301.86" y="292.84">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_36" data-for="btn_36" x="302.83" y="399.15">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_37" data-for="btn_37" x="447.18" y="346.48">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_38" data-for="btn_38" x="447.18" y="292.84">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_39" data-for="btn_39" x="447.18" y="398.17">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_40" data-for="btn_40" x="447.18" y="89.97">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_41" data-for="btn_41" x="447.18" y="143.61">
-      1
+      .
     </text>
     <text class="button-text" id="lbl_btn_42" data-for="btn_42" x="447.18" y="196.28">
-      1
+      .
     </text>
   </g>
 </svg>
