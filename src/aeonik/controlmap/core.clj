@@ -1,8 +1,11 @@
 (ns aeonik.controlmap.core
   (:require
+   [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [riveted.core :as vtd]
    [tupelo.forest :as f]
+   [net.cgrand.enlive-html :as html]
    [tupelo.parse.xml :as tx]))
 
 (def actionmaps (-> "actionmaps.xml"
@@ -10,7 +13,11 @@
                     io/reader
                     tx/parse-streaming))
 
-(def svg (-> "svg/panel_1_boxes.svg"
+(def xml-resource (html/xml-resource (io/resource "actionmaps.xml")))
+(def nav (vtd/navigator (slurp (io/resource "actionmaps.xml"))))
+(def parsed-xml (xml/parse (io/reader (io/resource "actionmaps.xml"))))
+
+(def svg (-> "svg/panel_1.svg"
              io/resource
              io/reader
              tx/parse-streaming))
@@ -18,7 +25,7 @@
 (def instance->svg
   {1 "svg/alpha_L.svg"
    3 "svg/alpha_R.svg"
-   4 "svg/panel_3.svg"              ; SharKa‑50 panel
+   4 "svg/panel_3.svg"
    5 "svg/vpc_mongoose_t50cm3.svg"
    6 "svg/panel_1.svg"
    7 "svg/panel_2.svg"})
@@ -34,15 +41,29 @@
 (def svg-roots
   (into {}
         (map (fn [[_ fname]]
-               (let [resource (io/resource fname)]
-                 (if resource
-                   [fname (-> resource
-                              io/reader
-                              tx/parse-streaming)]
-                   (do
-                     (println "Resource not found:" fname)
-                     [fname nil]))))
+               (if-let [resource (io/resource fname)]
+                 [fname (-> resource
+                            io/reader
+                            tx/parse-streaming)]
+                 (do
+                   (println "Resource not found:" fname)
+                   [fname nil])))
              instance->svg)))
+
+(comment
+  (->> nav
+       (vtd/select :rebind)
+       (map #(vtd/attr % :input)))
+
+  (map #(vtd/attr  % :input)
+       (-> nav
+           (vtd/select :rebind)))
+
+  (map (comp vtd/fragment vtd/parent) (-> nav
+                                          (vtd/select :action)))
+
+  (map (comp vtd/text vtd/parent) (-> nav
+                                      (vtd/select :action))))
 
 (defn find-joystick-ids
   "Extracts joystick IDs and their corresponding SVGs from the given actionmaps.
@@ -71,30 +92,31 @@
                        [inst svg])))))
          (into {})))))
 
-(f/with-forest (f/new-forest)
-  (-> actionmaps
-      (f/add-tree-enlive)
-      (f/find-paths [:** :rebind])
-      f/format-paths))
+(comment
+  (f/with-forest (f/new-forest)
+    (-> actionmaps
+        (f/add-tree-enlive)
+        (f/find-paths [:** :rebind])
+        f/format-paths))
 
-(f/with-forest (f/new-forest)
-  (-> actionmaps
-      (f/add-tree-enlive)
-      (f/find-paths [:** {:input "js4_ "}])
-      f/format-paths))
+  (f/with-forest (f/new-forest)
+    (-> actionmaps
+        (f/add-tree-enlive)
+        (f/find-paths [:** {:input "js4_ "}])
+        f/format-paths))
 
-(f/with-forest (f/new-forest)
-  (-> actionmaps
-      (f/add-tree-enlive)
-      (f/find-paths-with [:** {:input :*}]
-                         #(str/starts-with? (f/hid->attr (last %) :input) "js5_"))
-      f/format-paths))
+  (f/with-forest (f/new-forest)
+    (-> actionmaps
+        (f/add-tree-enlive)
+        (f/find-paths-with [:** {:input :*}]
+                           #(str/starts-with? (f/hid->attr (last %) :input) "js5_"))
+        f/format-paths)))
 
 (defn extract-input-action-mappings
   "Extracts input-action mappings from the actionmaps by traversing the tree structure
    and fetching the corresponding input and action name for each rebind path.
 
-   Returns a vector of maps containing input and action pairs."
+   Returns a vector of maps containing input and action pairs. Probably not going to use this"
   [actionmaps]
   (f/with-forest (f/new-forest)
     (-> actionmaps
