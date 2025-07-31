@@ -1,0 +1,61 @@
+{:discovery
+ {:environment-var "SC_ACTIONMAPS_PATH"
+  :actionmaps-relative-path "user/client/0/Profiles/default/actionmaps.xml"
+  :known-paths
+  {:linux
+   [;; Lutris/custom Wine prefix
+    "{home}/Games/star-citizen/drive_c/Program Files/Roberts Space Industries/StarCitizen/LIVE/{relative-path}"
+    ;; Default Wine prefix
+    "{home}/.wine/drive_c/Program Files/Roberts Space Industries/StarCitizen/LIVE/{relative-path}"
+    ;; Steam Proton (common locations)
+    "{home}/.steam/steam/steamapps/compatdata/1816350/pfx/drive_c/Program Files/Roberts Space Industries/StarCitizen/LIVE/{relative-path}"
+    ;; Bottles Wine manager
+    "{home}/.local/share/bottles/bottles/StarCitizen/drive_c/Program Files/Roberts Space Industries/StarCitizen/LIVE/{relative-path}"]
+   :windows
+   [;; Standard installation
+    "C:\\Program Files\\Roberts Space Industries\\StarCitizen\\LIVE\\{relative-path}"
+    ;; User-specific installation
+    "C:\\Users\\{username}\\AppData\\Local\\Roberts Space Industries\\StarCitizen\\LIVE\\{relative-path}"
+    ;; Custom drive installations
+    "D:\\Games\\Roberts Space Industries\\StarCitizen\\LIVE\\{relative-path}"
+    "E:\\Games\\Roberts Space Industries\\StarCitizen\\LIVE\\{relative-path}"]}
+  :platform-detection
+  {:windows-prefixes ["Windows"]
+   :linux-prefixes ["Linux" "Mac"]
+   :default-platform :linux}
+  :validation
+  {:required-file-extensions [".xml"]
+   :xml-declaration-patterns ["<?xml" "<?XML"]
+   :min-file-size 100}}
+
+ :mapping
+ {:product-svg-mapping
+  ;; Regex patterns as strings (will be compiled to Pattern objects)
+  {"L-VPC Stick MT-50CM2"     "svg/alpha_L.svg"
+   "R-VPC Stick MT-50CM2"     "svg/alpha_R.svg"
+   "VPC SharKa-50 Panel"      "svg/panel_3.svg"
+   "VPC Panel #1"             "svg/panel_1.svg"
+   "VPC Panel #2"             "svg/panel_2.svg"
+   "MongoosT-50CM3"           "svg/vpc_mongoose_t50cm3.svg"}
+
+  ;; Legacy instance-to-SVG mapping for backwards compatibility
+  :legacy-instance-mapping
+  {1 "svg/alpha_L.svg"
+   3 "svg/alpha_R.svg"
+   4 "svg/panel_3.svg"
+   5 "svg/vpc_mongoose_t50cm3.svg"
+   6 "svg/panel_1.svg"
+   7 "svg/panel_2.svg"}
+
+  :action-name-cleaning
+  {:remove-v-prefix true
+   :prefix-filters ["weapon_" "view_" "target_" "seat_" "camera_"
+                    "countermeasure_" "look_" "turret_" "ifcs_"
+                    "movement_" "interaction_" "misc_"]}
+
+  :svg-generation
+  {:default-output-dir "out"
+   :filename-prefix "updated_"
+   :button-id-format "btn_{button-number}"
+   :svg-text-selector [:text]
+   :data-attribute "data-for"}}}
