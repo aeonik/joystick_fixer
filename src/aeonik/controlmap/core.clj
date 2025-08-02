@@ -9,7 +9,8 @@
    [net.cgrand.enlive-html :as html]
    [riveted.core :as vtd]
    [tupelo.forest :as f]
-   [tupelo.parse.xml :as tx]))
+   [tupelo.parse.xml :as tx])
+  (:gen-class))
 
 ;; =============================================================================
 ;; Configuration and Data Loading
@@ -17,11 +18,10 @@
 
 (def ^:private config
   "Application configuration loaded from config.edn"
-  (delay
-    (-> "config.edn"
-        io/resource
-        slurp
-        edn/read-string)))
+  (-> "config.edn"
+      io/resource
+      slurp
+      edn/read-string))
 
 (defn load-actionmaps
   "Loads actionmaps XML, first trying discovery, then falling back to resources"
@@ -41,7 +41,7 @@
 (defn get-product-svg-mapping
   "Returns product->svg mapping with compiled regex patterns"
   []
-  (let [mapping (get-in @config [:mapping :product-svg-mapping])]
+  (let [mapping (get-in config [:mapping :product-svg-mapping])]
     (into {} (map (fn [[pattern svg]]
                     [(re-pattern pattern) svg])
                   mapping))))
@@ -49,7 +49,7 @@
 (defn get-legacy-instance-mapping
   "Returns legacy instance->svg mapping from config"
   []
-  (get-in @config [:mapping :legacy-instance-mapping]))
+  (get-in config [:mapping :legacy-instance-mapping]))
 
 (defn load-svg-resources
   "Loads all SVG resources into memory, filtering out missing files"
@@ -66,7 +66,7 @@
 
 (def svg-roots
   "Lazy-loaded SVG resources"
-  (delay (load-svg-resources)))
+  (load-svg-resources))
 
 ;; =============================================================================
 ;; Action Name Cleaning
@@ -75,7 +75,7 @@
 (defn clean-action-name
   "Removes common prefixes from action names for cleaner display"
   [action-name]
-  (let [cleaning-config (get-in @config [:mapping :action-name-cleaning])
+  (let [cleaning-config (get-in config [:mapping :action-name-cleaning])
         {:keys [remove-v-prefix prefix-filters]} cleaning-config
         step1 (if remove-v-prefix
                 (str/replace action-name #"^v_" "")
@@ -88,10 +88,10 @@
      step1
      prefix-filters)))
 
-(comment (def actionmaps (-> "actionmaps.xml"
-                             io/resource
-                             io/reader
-                             tx/parse-streaming)))
+(def actionmaps (-> "actionmaps.xml"
+                    io/resource
+                    io/reader
+                    tx/parse-streaming))
 
 (comment
   (def xml-resource (html/xml-resource (io/resource "actionmaps.xml")))
@@ -219,7 +219,7 @@
                (f/format-paths))))))
 
 (comment
-  (->> (find-joystick-bindings actionmaps 5)
+  (->> (find-joystick-bindings actionmaps 4)
        (map #(html/select % [:actionmap])))
 
   (->> (find-joystick-bindings actionmaps 5)
@@ -252,16 +252,29 @@
                                first
                                (get-in [:attrs :input]))
                      button-num (when input
-                                  (second (re-find #"button(\d+)" input)))
-                     svg-config (get-in @config [:mapping :svg-generation])
+                                  (second (or (re-find #"button(\d+)" input)
+                                              (re-find #"rot(\w+)" input)
+                                              (re-find #"slider(\d+)" input))))
+                     svg-config (get-in config [:mapping :svg-generation])
                      button-format (:button-id-format svg-config)]
                  (when input
                    {:action (get-in action [:attrs :name])
                     :input input
                     :svg-input (when button-num
                                  (str/replace button-format "{button-number}" button-num))}))))))
+
+(joystick-action-mappings actionmaps 5)
+
+(defn foo [i] i)
+
+(defn bar [x]
+  (dotimes [i x]
+    (foo i)))
+
+(bar 10)
+
 (comment
-  (joystick-action-mappings actionmaps 1)
+  (joystick-action-mappings actionmaps 5)
 
   (html/select svg [[:text (html/attr= :data-for "btn_27")]])
 
@@ -300,7 +313,7 @@
   "Updates an SVG with action mappings for a specific joystick"
   [svg actionmaps joystick-num]
   (let [mappings (joystick-action-mappings actionmaps joystick-num)
-        svg-config (get-in @config [:mapping :svg-generation])
+        svg-config (get-in config [:mapping :svg-generation])
         data-attr (:data-attribute svg-config)]
     (reduce (fn [svg-doc {:keys [svg-input action]}]
               (if svg-input
@@ -317,7 +330,7 @@
   (when-let [svg (get svg-roots svg-location)]
     (let [updated-svg (update-svg-with-mappings svg actionmaps instance)
           filename (last (str/split svg-location #"/"))
-          svg-config (get-in @config [:mapping :svg-generation])
+          svg-config (get-in config [:mapping :svg-generation])
           prefix (:filename-prefix svg-config)
           output-path (str output-dir "/" prefix filename)]
       (io/make-parents output-path)
@@ -331,7 +344,7 @@
 (defn generate-all-svgs!
   "Generates updated SVGs for all known joystick instances"
   ([actionmaps]
-   (let [default-dir (get-in @config [:mapping :svg-generation :default-output-dir])]
+   (let [default-dir (get-in config [:mapping :svg-generation :default-output-dir])]
      (generate-all-svgs! actionmaps default-dir)))
   ([actionmaps output-dir]
    (let [instance-mapping (get-legacy-instance-mapping)]

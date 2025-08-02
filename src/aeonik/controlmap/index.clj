@@ -69,7 +69,7 @@
                    :svg-path generated-path
                    :filename generated-filename})))
          (sort-by :instance))))
-;;
+
 ;; =============================================================================
 ;; HTML Template with Enlive
 ;; =============================================================================
@@ -96,16 +96,16 @@
     (html/at base
              [:.svg-grid]
              (html/content
-              (map (fn [{:keys [instance title description svg-path]}]
+              (map (fn [{:keys [instance title description filename]}]
                      {:tag :div, :attrs {:class "svg-item"}
                       :content
                       [{:tag :h3, :content [(str title " (Instance " instance ")")]}
                        {:tag :div, :attrs {:class "instance-info"}, :content [description]}
                        {:tag :div, :attrs {:class "svg-container"}
                         :content
-                        [{:tag :object, :attrs {:data svg-path, :type "image/svg+xml"}
+                        [{:tag :object, :attrs {:data filename, :type "image/svg+xml"}
                           :content
-                          [{:tag :p, :content [(str "SVG not found: " svg-path)]}]}]}]})
+                          [{:tag :p, :content [(str "SVG not found: " filename)]}]}]}]})
                    svg-items)))))
 ;; =============================================================================
 ;; File Generation
