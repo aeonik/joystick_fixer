@@ -4,7 +4,9 @@
    [clojure.string :as str]
    [clojure.edn :as edn]
    [aeonik.controlmap.discovery :as disocvery]
-   [net.cgrand.enlive-html :as html]))
+   [net.cgrand.enlive-html :as html]
+   [aeonik.controlmap.discovery :as discovery]
+   [aeonik.controlmap.state :as state]))
 
 ;; =============================================================================
 ;; Configuration Loading
@@ -52,7 +54,7 @@
 (defn get-generated-svg-info
   "Returns information about generated SVGs based on instance mapping and config"
   []
-  (let [instance-mapping (get-in config [:mapping :legacy-instance-mapping])
+  (let [instance-mapping state/joystick-ids
         svg-config (get-in config [:mapping :svg-generation])
         output-dir (:default-output-dir svg-config)
         filename-prefix (:filename-prefix svg-config)

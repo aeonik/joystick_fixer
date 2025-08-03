@@ -1,11 +1,10 @@
 (ns aeonik.controlmap.discovery
   "Discovers and locates Star Citizen configuration files"
   (:require
+   [aeonik.controlmap.state :refer [find-joystick-ids]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.string :as str]
-   [tupelo.forest :as f]
-   [aeonik.controlmap.state :as state]))
+   [clojure.string :as str]))
 
 (def ^:private config
   "Application configuration loaded from config.edn"
@@ -135,51 +134,6 @@
     (into {} (map (fn [[pattern svg]]
                     [(re-pattern pattern) svg])
                   mapping))))
-
-(defn find-joystick-ids
-  "Extracts joystick instance IDs and their corresponding SVGs from actionmaps
-  e.g {1 \"svg/alpha_L.svg\"}"
-  [actionmaps]
-  (let [product-svg-mapping (get-product-svg-mapping)]
-    (f/with-forest (f/new-forest)
-      (-> actionmaps
-          f/add-tree-enlive
-          (f/find-hids [:** {:type "joystick"}])
-          (->>
-           (keep (fn [hid]
-                   (let [node (f/hid->node hid)
-                         inst (some-> node :instance parse-long)
-                         prod (:Product node)]
-                     (when (and inst prod)
-                       (when-let [[_ svg]
-                                  (some (fn [[re s]]
-                                          (when (re-find re prod) [re s]))
-                                        product-svg-mapping)]
-                         [inst svg])))))
-           (into {}))))))
-
-(comment
-  (find-joystick-ids state/actionmaps))
-
-comment
-(->> (find-joystick-bindings actionmaps 5)
-     (map #(html/select % [:actionmap])))
-
-(->> (find-joystick-bindings actionmaps 5)
-     (map #(html/select % [[:action (html/attr? :name)]])))
-
-(->> (find-joystick-bindings actionmaps 5)
-     (mapcat #(html/select % [[:action (html/attr? :name)]]))
-     (map #(html/attr-values % :name)))
-
-(->> (find-joystick-bindings actionmaps 5)
-     (mapcat #(html/select % [[:action (html/attr? :name)]]))
-     (into {} (map (fn [action]
-                     [(get-in action [:attrs :name])
-                      (-> action
-                          (html/select [:rebind])
-                          first
-                          (get-in [:attrs :input]))]))))
 
 (comment
   ;; Example usage:

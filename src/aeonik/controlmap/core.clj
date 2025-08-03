@@ -3,7 +3,7 @@
   (:require
    [aeonik.controlmap.discovery :as discovery]
    [aeonik.controlmap.index :as index]
-   [aeonik.controlmap.state :refer [load-actionmaps]]
+   [aeonik.controlmap.state :as state]
    [clojure.data.xml :as xml]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -11,8 +11,7 @@
    [net.cgrand.enlive-html :as html]
    [riveted.core :as vtd]
    [tupelo.forest :as f]
-   [tupelo.parse.xml :as tx]
-   [aeonik.controlmap.state :as state]))
+   [tupelo.parse.xml :as tx]))
 
 ;; =============================================================================
 ;; Configuration and Data Loading
@@ -46,10 +45,7 @@
      prefix-filters)))
 
 (comment
-  (def actionmaps (-> "actionmaps.xml"
-                      io/resource
-                      io/reader
-                      tx/parse-streaming))
+  (def actionmaps state/actionmaps)
 
   (def xml-resource (html/xml-resource (io/resource "actionmaps.xml")))
   (def nav (vtd/navigator (slurp (io/resource "actionmaps.xml"))))
@@ -107,25 +103,25 @@
 (comment
 
   (f/with-forest (f/new-forest)
-    (-> actionmaps
+    (-> state/actionmaps
         (f/add-tree-enlive)
         (f/find-paths [:** :rebind])
         f/format-paths))
 
   (f/with-forest (f/new-forest)
-    (-> actionmaps
+    (-> state/actionmaps
         (f/add-tree-enlive)
         (f/find-paths [:** {:input "js4_ "}])
         f/format-paths))
 
   (f/with-forest (f/new-forest)
-    (-> actionmaps
+    (-> state/actionmaps
         (f/add-tree-enlive)
         (f/find-paths-with [:** {:input :*}]
                            #(str/starts-with? (f/hid->attr (last %) :input) "js5_"))
         f/format-paths)))
 
-(defn ^{:deprecated} extract-input-action-mappings
+(defn ^:deprecated extract-input-action-mappings
   "Extracts input-action mappings from the actionmaps by traversing the tree structure
    and fetching the corresponding input and action name for each rebind path.
 
@@ -158,17 +154,17 @@
                (f/format-paths))))))
 
 (comment
-  (->> (find-joystick-bindings actionmaps 5)
+  (->> (find-joystick-bindings state/actionmaps 5)
        (map #(html/select % [:actionmap])))
 
-  (->> (find-joystick-bindings actionmaps 5)
+  (->> (find-joystick-bindings state/actionmaps 5)
        (map #(html/select % [[:action (html/attr? :name)]])))
 
-  (->> (find-joystick-bindings actionmaps 5)
+  (->> (find-joystick-bindings state/actionmaps 5)
        (mapcat #(html/select % [[:action (html/attr? :name)]]))
        (map #(html/attr-values % :name)))
 
-  (->> (find-joystick-bindings actionmaps 5)
+  (->> (find-joystick-bindings state/actionmaps 5)
        (mapcat #(html/select % [[:action (html/attr? :name)]]))
        (into {} (map (fn [action]
                        [(get-in action [:attrs :name])
@@ -197,7 +193,7 @@
                     :svg-input stripped_input}))))))
 
 (comment
-  (joystick-action-mappings actionmaps 5)
+  (joystick-action-mappings state/actionmaps 5)
 
   (html/select svg [[:text (html/attr= :data-for "btn_27")]])
 
@@ -205,7 +201,7 @@
            [[:text (html/attr= :data-for "btn_27")]]
            (html/content "test"))
 
-  (let [mappings (joystick-action-mappings actionmaps 1)]
+  (let [mappings (joystick-action-mappings state/actionmaps 1)]
     (reduce (fn [svg-doc {:keys [svg-input action]}]
               (if svg-input
                 (html/at svg-doc
@@ -215,7 +211,7 @@
             svg
             mappings))
 
-  (->> (let [mappings (joystick-action-mappings actionmaps 1)]
+  (->> (let [mappings (joystick-action-mappings state/actionmaps 1)]
          (reduce (fn [svg-doc {:keys [svg-input action]}]
                    (if svg-input
                      (html/at svg-doc
@@ -248,7 +244,7 @@
             mappings)))
 
 (comment
-  (update-svg-with-mappings svg actionmaps 4))
+  (update-svg-with-mappings svg state/actionmaps 4))
 
 (defn generate-svg-for-instance
   "Generates an updated SVG for a specific joystick instance"
@@ -279,7 +275,7 @@
                   (generate-svg-for-instance actionmaps instance svg-location output-dir)))
           (into [])))))
 
-(comment (def updated-svg (update-svg-with-mappings svg actionmaps 4))
+(comment (def updated-svg (update-svg-with-mappings svg state/actionmaps 4))
 
          (->> updated-svg
               html/emit*
@@ -339,7 +335,7 @@
   "Main entry point - generates all SVGs with current actionmaps"
   [& args]
   (print-status!)
-  (if-let [actionmaps (load-actionmaps)]
+  (if-let [actionmaps state/actionmaps]
     (do
       (println "Generating SVGs...")
       (let [generated (generate-all-svgs! actionmaps)]
@@ -364,19 +360,19 @@
   (print-status!)
 
   ;; Load and inspect actionmaps
-  (def actionmaps (load-actionmaps))
+  (def actionmaps state/actionmaps)
 
   ;; Find joystick mappings
-  (find-joystick-ids actionmaps)
+  (find-joystick-ids state/actionmaps)
 
   ;; Get mappings for specific joystick
-  (joystick-action-mappings actionmaps 1)
+  (joystick-action-mappings state/actionmaps 1)
 
   ;; Generate single SVG
-  (generate-svg-for-instance actionmaps 4 "svg/panel_3.svg" "out")
+  (generate-svg-for-instance state/actionmaps 4 "svg/panel_3.svg" "out")
 
   ;; Generate all SVGs
-  (generate-all-svgs! actionmaps)
+  (generate-all-svgs! state/actionmaps)
 
   ;; Test discovery
   (discovery/actionmaps-info))
