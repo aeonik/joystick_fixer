@@ -44,14 +44,6 @@
                (edn/read-string (slurp f))]))
        (into {})))
 
-(def actionmaps (load-actionmaps))
-
-(def joystick-ids (discovery/find-joystick-ids actionmaps))
-
-(def svg-roots (load-svg-resources))
-
-(def svg-edn-files->map "resources/config/svg/")
-
 (defn find-joystick-ids
   "Extracts joystick instance IDs and their corresponding SVGs from actionmaps
   e.g {1 \"svg/alpha_L.svg\"}"
@@ -73,6 +65,14 @@
                                         product-svg-mapping)]
                          [inst svg])))))
            (into {}))))))
+
+(def actionmaps (load-actionmaps))
+
+(def svg-roots (load-svg-resources))
+
+(def svg-edn-files->map "resources/config/svg/")
+
+(def joystick-ids (find-joystick-ids actionmaps))
 
 (comment
   (find-joystick-ids actionmaps))

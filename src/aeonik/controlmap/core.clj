@@ -249,7 +249,7 @@
 (defn generate-svg-for-instance
   "Generates an updated SVG for a specific joystick instance"
   [actionmaps instance svg-location output-dir]
-  (when-let [svg (get svg-roots svg-location)]
+  (when-let [svg (get state/svg-roots svg-location)]
     (let [updated-svg (update-svg-with-mappings svg actionmaps instance)
           filename (last (str/split svg-location #"/"))
           svg-config (get-in config [:mapping :svg-generation])
@@ -266,10 +266,10 @@
 (defn generate-all-svgs!
   "Generates updated SVGs for all known joystick instances"
   ([actionmaps]
-   (let [default-dir (get-in config [:mapping :svg-generation :default-output-dir])]
+   (let [default-dir (-> config :mapping :svg-generation :default-output-dir)]
      (generate-all-svgs! actionmaps default-dir)))
   ([actionmaps output-dir]
-   (let [instance-mapping (find-joystick-ids)]
+   (let [instance-mapping state/joystick-ids]
      (->> instance-mapping
           (keep (fn [[instance svg-location]]
                   (generate-svg-for-instance actionmaps instance svg-location output-dir)))
@@ -303,8 +303,8 @@
                              (catch Exception _ false))]
     (merge discovery-info
            {:actionmaps-loadable? actionmaps-loaded?
-            :svg-resources-loaded (count svg-roots)
-            :available-instances (keys (discovery/find-joystick-ids state/actionmaps))})))
+            :svg-resources-loaded (count state/svg-roots)
+            :available-instances (keys (state/joystick-ids state/actionmaps))})))
 
 (defn print-status!
   "Prints current system status to console"

@@ -1,7 +1,6 @@
 (ns aeonik.controlmap.discovery
   "Discovers and locates Star Citizen configuration files"
   (:require
-   [aeonik.controlmap.state :refer [find-joystick-ids]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]))
