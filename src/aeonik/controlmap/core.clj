@@ -1,7 +1,9 @@
 (ns aeonik.controlmap.core
+  (:gen-class)
   (:require
    [aeonik.controlmap.discovery :as discovery]
    [aeonik.controlmap.index :as index]
+   [aeonik.controlmap.state :refer [load-actionmaps]]
    [clojure.data.xml :as xml]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -9,8 +11,8 @@
    [net.cgrand.enlive-html :as html]
    [riveted.core :as vtd]
    [tupelo.forest :as f]
-   [tupelo.parse.xml :as tx])
-  (:gen-class))
+   [tupelo.parse.xml :as tx]
+   [aeonik.controlmap.state :as state]))
 
 ;; =============================================================================
 ;; Configuration and Data Loading
@@ -23,51 +25,6 @@
       slurp
       edn/read-string))
 
-(defn load-actionmaps
-  "Loads actionmaps XML, first trying discovery, then falling back to resources"
-  []
-  (if-let [actionmaps-file (discovery/find-actionmaps)]
-    (do
-      (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
-      (with-open [reader (io/reader actionmaps-file)]
-        (tx/parse-streaming reader)))
-    (do
-      (println "No actionmaps found via discovery, using bundled resource")
-      (-> "actionmaps.xml"
-          io/resource
-          io/reader
-          tx/parse-streaming))))
-
-(defn get-product-svg-mapping
-  "Returns product->svg mapping with compiled regex patterns"
-  []
-  (let [mapping (get-in config [:mapping :product-svg-mapping])]
-    (into {} (map (fn [[pattern svg]]
-                    [(re-pattern pattern) svg])
-                  mapping))))
-
-(defn get-legacy-instance-mapping
-  "Returns legacy instance->svg mapping from config"
-  []
-  (get-in config [:mapping :legacy-instance-mapping]))
-
-(defn load-svg-resources
-  "Loads all SVG resources into memory, filtering out missing files"
-  []
-  (let [svg-map (get-product-svg-mapping)]
-    (into {}
-          (keep (fn [[key fname]]
-                  (if-let [resource (io/resource fname)]
-                    [fname (-> resource io/reader tx/parse-streaming)]
-                    (do
-                      (println "Warning: SVG resource not found:" fname)
-                      nil)))
-                svg-map))))
-
-(def svg-roots
-  "Lazy-loaded SVG resources"
-  (load-svg-resources))
-
 ;; =============================================================================
 ;; Action Name Cleaning
 ;; =============================================================================
@@ -75,25 +32,25 @@
 (defn clean-action-name
   "Removes common prefixes from action names for cleaner display"
   [action-name]
-  (let [cleaning-config (get-in config [:mapping :action-name-cleaning])
+  (let [cleaning-config (-> config :mapping :action-name-cleaning)
         {:keys [remove-v-prefix prefix-filters]} cleaning-config
-        step1 (if remove-v-prefix
-                (str/replace action-name #"^v_" "")
-                action-name)]
+        filtered_name (if remove-v-prefix
+                        (str/replace action-name #"^v_" "")
+                        action-name)]
     (reduce
      (fn [acc prefix]
        (if (str/starts-with? acc prefix)
          (subs acc (count prefix))
          acc))
-     step1
+     filtered_name
      prefix-filters)))
 
-(def actionmaps (-> "actionmaps.xml"
-                    io/resource
-                    io/reader
-                    tx/parse-streaming))
-
 (comment
+  (def actionmaps (-> "actionmaps.xml"
+                      io/resource
+                      io/reader
+                      tx/parse-streaming))
+
   (def xml-resource (html/xml-resource (io/resource "actionmaps.xml")))
   (def nav (vtd/navigator (slurp (io/resource "actionmaps.xml"))))
   (def parsed-xml (xml/parse (io/reader (io/resource "actionmaps.xml")))))
@@ -147,28 +104,8 @@
   (map (comp vtd/text vtd/parent) (-> nav
                                       (vtd/select :action))))
 
-(defn find-joystick-ids
-  "Extracts joystick instance IDs and their corresponding SVGs from actionmaps"
-  [actionmaps]
-  (let [product-svg-mapping (get-product-svg-mapping)]
-    (f/with-forest (f/new-forest)
-      (-> actionmaps
-          f/add-tree-enlive
-          (f/find-hids [:** {:type "joystick"}])
-          (->>
-           (keep (fn [hid]
-                   (let [node (f/hid->node hid)
-                         inst (some-> node :instance parse-long)
-                         prod (:Product node)]
-                     (when (and inst prod)
-                       (when-let [[_ svg]
-                                  (some (fn [[re s]]
-                                          (when (re-find re prod) [re s]))
-                                        product-svg-mapping)]
-                         [inst svg])))))
-           (into {}))))))
-
 (comment
+
   (f/with-forest (f/new-forest)
     (-> actionmaps
         (f/add-tree-enlive)
@@ -188,11 +125,13 @@
                            #(str/starts-with? (f/hid->attr (last %) :input) "js5_"))
         f/format-paths)))
 
-(defn extract-input-action-mappings
+(defn ^{:deprecated} extract-input-action-mappings
   "Extracts input-action mappings from the actionmaps by traversing the tree structure
    and fetching the corresponding input and action name for each rebind path.
 
-   Returns a vector of maps containing input and action pairs. Probably not going to use this"
+   Returns a vector of maps containing input and action pairs. Probably not going to use this
+
+  Use find-joystick-bindings instead, per joystick"
   [actionmaps]
   (f/with-forest (f/new-forest)
     (-> actionmaps
@@ -207,7 +146,7 @@
          (into [])))))
 
 (defn find-joystick-bindings
-  "Returns enlive structures containing action maps for a specific joystick"
+  "Returns enlive structures containing all action maps for a specific joystick"
   [actionmaps js-num]
   (let [prefix (str "js" js-num "_")]
     (f/with-forest (f/new-forest)
@@ -219,7 +158,7 @@
                (f/format-paths))))))
 
 (comment
-  (->> (find-joystick-bindings actionmaps 4)
+  (->> (find-joystick-bindings actionmaps 5)
        (map #(html/select % [:actionmap])))
 
   (->> (find-joystick-bindings actionmaps 5)
@@ -308,6 +247,9 @@
             svg
             mappings)))
 
+(comment
+  (update-svg-with-mappings svg actionmaps 4))
+
 (defn generate-svg-for-instance
   "Generates an updated SVG for a specific joystick instance"
   [actionmaps instance svg-location output-dir]
@@ -331,7 +273,7 @@
    (let [default-dir (get-in config [:mapping :svg-generation :default-output-dir])]
      (generate-all-svgs! actionmaps default-dir)))
   ([actionmaps output-dir]
-   (let [instance-mapping (get-legacy-instance-mapping)]
+   (let [instance-mapping (find-joystick-ids)]
      (->> instance-mapping
           (keep (fn [[instance svg-location]]
                   (generate-svg-for-instance actionmaps instance svg-location output-dir)))
@@ -361,12 +303,12 @@
   []
   (let [discovery-info (discovery/actionmaps-info)
         actionmaps-loaded? (try
-                             (some? (load-actionmaps))
+                             (some? state/actionmaps)
                              (catch Exception _ false))]
     (merge discovery-info
            {:actionmaps-loadable? actionmaps-loaded?
             :svg-resources-loaded (count svg-roots)
-            :available-instances (keys (get-legacy-instance-mapping))})))
+            :available-instances (keys (discovery/find-joystick-ids state/actionmaps))})))
 
 (defn print-status!
   "Prints current system status to console"

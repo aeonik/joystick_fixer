@@ -38,15 +38,6 @@
    "VPC Panel #2"             "svg/panel_2.svg"
    "MongoosT-50CM3"           "svg/vpc_mongoose_t50cm3.svg"}
 
-  ;; Legacy instance-to-SVG mapping for backwards compatibility
-  :legacy-instance-mapping
-  {1 "svg/alpha_L.svg"
-   3 "svg/alpha_R.svg"
-   4 "svg/panel_3.svg"
-   5 "svg/vpc_mongoose_t50cm3.svg"
-   6 "svg/panel_1.svg"
-   7 "svg/panel_2.svg"}
-
   :action-name-cleaning
   {:remove-v-prefix true
    :prefix-filters ["weapon_" "view_" "target_" "seat_" "camera_"

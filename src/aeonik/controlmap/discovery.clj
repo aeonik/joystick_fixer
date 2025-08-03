@@ -1,17 +1,18 @@
 (ns aeonik.controlmap.discovery
   "Discovers and locates Star Citizen configuration files"
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.edn :as edn]))
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [tupelo.forest :as f]
+   [aeonik.controlmap.state :as state]))
 
 (def ^:private config
   "Application configuration loaded from config.edn"
-  (delay
-    (-> "config.edn"
-        io/resource
-        slurp
-        edn/read-string
-        :discovery)))
+  (-> "config.edn"
+      io/resource
+      slurp
+      edn/read-string))
 
 (def ^:private home-dir
   "User's home directory"
@@ -20,7 +21,7 @@
 (defn- expand-path-template
   "Expands path templates with system-specific values"
   [template]
-  (let [relative-path (:actionmaps-relative-path @config)
+  (let [relative-path (-> config :discovery :actionmaps-relative-path)
         username (or (System/getenv "USERNAME")
                      (System/getenv "USER")
                      "user")]
@@ -36,13 +37,13 @@
                #"%([A-Za-z_][A-Za-z0-9_]*)%"
                (fn [[_ var-name]]
                  (or (System/getenv var-name)
-                     (str "%" var-name "%"))))) ; preserve if not found
+                     (str "%" var-name "%")))))
 
 (defn- detect-platform
   "Detects the current operating system platform based on configuration"
   []
   (let [{:keys [windows-prefixes linux-prefixes default-platform]}
-        (:platform-detection @config)
+        (-> config :discovery :platform-detection)
         os-name (System/getProperty "os.name")]
     (cond
       (some #(str/starts-with? os-name %) windows-prefixes) :windows
@@ -52,7 +53,7 @@
 (defn- get-known-paths
   "Gets the configured known paths for the current platform"
   []
-  (->> (get-in @config [:known-paths (detect-platform)])
+  (->> (get-in config [:discovery :known-paths (detect-platform)])
        (map expand-path-template)))
 
 (defn- find-existing-file
@@ -67,7 +68,8 @@
 (defn- validate-file-content
   "Validates file content based on configuration rules"
   [file]
-  (let [{:keys [xml-declaration-patterns min-file-size]} (:validation @config)]
+  (let [{:keys [xml-declaration-patterns min-file-size]}
+        (-> config :discovery :validation)]
     (and (.canRead file)
          (.isFile file)
          (>= (.length file) min-file-size)
@@ -79,7 +81,7 @@
   "Finds the Star Citizen actionmaps.xml file, checking environment override first,
    then platform-specific known paths. Returns a File object or nil if not found."
   []
-  (let [env-var (:environment-var @config)]
+  (let [env-var (-> config :discovery :environment-var)]
     (or
      ;; Priority 1: Environment variable override
      (some-> (System/getenv env-var)
@@ -105,7 +107,7 @@
   "Returns a map with information about the actionmaps file location and status"
   []
   (let [file (find-actionmaps)
-        env-var (:environment-var @config)]
+        env-var (-> config :discovery :environment-var)]
     {:file file
      :path (some-> file .getAbsolutePath)
      :exists? (boolean file)
@@ -124,8 +126,60 @@
                  (-> "config.edn"
                      io/resource
                      slurp
-                     edn/read-string
-                     :discovery)))))
+                     edn/read-string)))))
+
+(defn get-product-svg-mapping
+  "Returns product->svg mapping with compiled regex patterns"
+  []
+  (let [mapping (-> config :mapping :product-svg-mapping)]
+    (into {} (map (fn [[pattern svg]]
+                    [(re-pattern pattern) svg])
+                  mapping))))
+
+(defn find-joystick-ids
+  "Extracts joystick instance IDs and their corresponding SVGs from actionmaps
+  e.g {1 \"svg/alpha_L.svg\"}"
+  [actionmaps]
+  (let [product-svg-mapping (get-product-svg-mapping)]
+    (f/with-forest (f/new-forest)
+      (-> actionmaps
+          f/add-tree-enlive
+          (f/find-hids [:** {:type "joystick"}])
+          (->>
+           (keep (fn [hid]
+                   (let [node (f/hid->node hid)
+                         inst (some-> node :instance parse-long)
+                         prod (:Product node)]
+                     (when (and inst prod)
+                       (when-let [[_ svg]
+                                  (some (fn [[re s]]
+                                          (when (re-find re prod) [re s]))
+                                        product-svg-mapping)]
+                         [inst svg])))))
+           (into {}))))))
+
+(comment
+  (find-joystick-ids state/actionmaps))
+
+comment
+(->> (find-joystick-bindings actionmaps 5)
+     (map #(html/select % [:actionmap])))
+
+(->> (find-joystick-bindings actionmaps 5)
+     (map #(html/select % [[:action (html/attr? :name)]])))
+
+(->> (find-joystick-bindings actionmaps 5)
+     (mapcat #(html/select % [[:action (html/attr? :name)]]))
+     (map #(html/attr-values % :name)))
+
+(->> (find-joystick-bindings actionmaps 5)
+     (mapcat #(html/select % [[:action (html/attr? :name)]]))
+     (into {} (map (fn [action]
+                     [(get-in action [:attrs :name])
+                      (-> action
+                          (html/select [:rebind])
+                          first
+                          (get-in [:attrs :input]))]))))
 
 (comment
   ;; Example usage:
@@ -137,3 +191,4 @@
   (get-known-paths)
   (detect-platform)
   (reload-config!))
+
