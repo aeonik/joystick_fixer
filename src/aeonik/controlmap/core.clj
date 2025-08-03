@@ -251,19 +251,11 @@
                                (html/select [:rebind])
                                first
                                (get-in [:attrs :input]))
-                     button-num (when input
-                                  (second (or (re-find #"button(\d+)" input)
-                                              (re-find #"rot(\w+)" input)
-                                              (re-find #"slider(\d+)" input))))
-                     svg-config (get-in config [:mapping :svg-generation])
-                     button-format (:button-id-format svg-config)]
+                     stripped_input (str/replace input #"^js\d+_" "")]
                  (when input
                    {:action (get-in action [:attrs :name])
                     :input input
-                    :svg-input (when button-num
-                                 (str/replace button-format "{button-number}" button-num))}))))))
-
-(joystick-action-mappings actionmaps 5)
+                    :svg-input stripped_input}))))))
 
 (comment
   (joystick-action-mappings actionmaps 5)
