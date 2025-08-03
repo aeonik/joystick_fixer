@@ -49,6 +49,7 @@
 (def qjoypad-parser (instaparse/parser qjoypad-ebnf :output-format :hiccup))
 
 (comment (cmb/ebnf qjoypad-ebnf))
+
 (def qjoypad-grammar-combinator
   {:file (cmb/cat
           (cmb/nt :header)
@@ -160,11 +161,11 @@
   (str (subs text 0 start) new-text (subs text end)))
 
 (def metadata {:instaparse.gll/start-index 27, :instaparse.gll/end-index 81})
-(def modified-file-content
-  (replace-text file
-                (:instaparse.gll/start-index metadata)
-                (:instaparse.gll/end-index metadata)
-                "replacement text"))
+(comment (def modified-file-content
+           (replace-text file
+                         (:instaparse.gll/start-index metadata)
+                         (:instaparse.gll/end-index metadata)
+                         "replacement text")))
 
 (comment (defn replace-joystick-numbers-in-text [text parse-tree]
            (let [replacement-ranges (->> parse-tree
