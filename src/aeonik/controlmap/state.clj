@@ -70,7 +70,7 @@
 
 (def svg-roots (load-svg-resources))
 
-(def svg-edn-files->map "resources/config/svg/")
+(def svg-edn-files->map (edn-files->map "resources/config/svg/"))
 
 (def joystick-ids (find-joystick-ids actionmaps))
 

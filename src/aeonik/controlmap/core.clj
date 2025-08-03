@@ -228,11 +228,12 @@
 ;; SVG Generation
 ;; =============================================================================
 
+;; TODO: need to fix the logic here, I stopped using the btn{button} mapping
 (defn update-svg-with-mappings
   "Updates an SVG with action mappings for a specific joystick"
   [svg actionmaps joystick-num]
   (let [mappings (joystick-action-mappings actionmaps joystick-num)
-        svg-config (get-in config [:mapping :svg-generation])
+        svg-config (-> config :mapping :svg-generation)
         data-attr (:data-attribute svg-config)]
     (reduce (fn [svg-doc {:keys [svg-input action]}]
               (if svg-input
@@ -244,7 +245,10 @@
             mappings)))
 
 (comment
-  (update-svg-with-mappings svg state/actionmaps 4))
+  (let [joystick-id 5
+        filename (state/joystick-ids joystick-id)
+        svg-root (state/svg-roots filename)]
+    (update-svg-with-mappings svg-root state/actionmaps joystick-id)))
 
 (defn generate-svg-for-instance
   "Generates an updated SVG for a specific joystick instance"
