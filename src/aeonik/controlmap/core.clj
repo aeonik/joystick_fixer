@@ -3,7 +3,7 @@
   (:require
    [aeonik.controlmap.discovery :as discovery]
    [aeonik.controlmap.index :as index]
-   [aeonik.controlmap.state :as state]
+   [aeonik.controlmap.state :as state :refer [context]]
    [clojure.data.xml :as xml]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -224,9 +224,39 @@
        (apply str)
        (spit "output.svg")))
 
+(defn joystick-info
+  [context instance-id]
+  (let [{:keys [joystick-ids svg-roots actionmaps]} context
+        svg-filename (joystick-ids instance-id)
+        svg-root (svg-roots svg-filename)
+        mappings (joystick-action-mappings actionmaps instance-id)]
+    {:instance instance-id
+     :svg-root svg-root
+     :svg-filename svg-filename
+     :mappings mappings}))
+
+(comment (joystick-info (build-job-context) 4))
+
 ;; =============================================================================
 ;; SVG Generation
 ;; =============================================================================
+
+(defn update-svg [{:keys [svg-root mappings]} svg-config]
+  (let [data-attr (:data-attribute svg-config)]
+    (reduce
+     (fn [svg-doc {:keys [svg-input action]}]
+       (if svg-input
+         (html/at svg-doc
+                  [[:text (html/attr= (keyword data-attr) svg-input)]]
+                  (html/content (clean-action-name action)))
+         svg-doc))
+     svg-root
+     mappings)))
+
+(defn render-svg [svg]
+  (apply str (html/emit* svg)))
+
+(render-svg (update-svg (joystick-info context 5) (:svg-config context)))
 
 ;; TODO: need to fix the logic here, I stopped using the btn{button} mapping
 (defn update-svg-with-mappings
@@ -279,21 +309,31 @@
                   (generate-svg-for-instance actionmaps instance svg-location output-dir)))
           (into [])))))
 
-(comment (def updated-svg (update-svg-with-mappings svg state/actionmaps 4))
+(comment
+  (generate-all-svgs! state/actionmaps)
 
-         (->> updated-svg
-              html/emit*
-              (apply str)
-              (spit "updated-panel.svg"))
+  (def updated-svg (update-svg-with-mappings svg state/actionmaps 4))
 
-         (let [instance 4
-               svg-location (instance->svg instance)
-               svg (get svg-roots svg-location)
-               updated-svg (update-svg-with-mappings svg actionmaps instance)]
-           (->> updated-svg
-                html/emit*
-                (apply str)
-                (spit "updated-panel.svg"))))
+  (->> updated-svg
+       html/emit*
+       (apply str)
+       (spit "updated-panel.svg"))
+
+  (let [instance 4
+        svg-location (instance->svg instance)
+        svg (get svg-roots svg-location)
+        updated-svg (update-svg-with-mappings svg actionmaps instance)]
+    (->> updated-svg
+         html/emit*
+         (apply str)
+         (spit "updated-panel.svg"))))
+
+(comment (defn process-all-joysticks! [context out-dir]
+           (doseq [instance-id (keys (:joystick-ids context))]
+             (let [ji (joystick-info context instance-id)
+                   updated (update-svg ji (:svg-config context))]
+               (write-updated-svg ji updated (:svg-config context) out-dir)))))
+
 ;; =============================================================================
 ;; Discovery Integration & Status
 ;; =============================================================================

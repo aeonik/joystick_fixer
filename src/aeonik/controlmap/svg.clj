@@ -30,14 +30,15 @@
 
 (defn coordinates->svg-hiccup
   [data]
-  [:svg {:xmlns "http://www.w3.org/2000/svg"}
-   (svg-elements data)])
+  (let [[class-key joystick-data] (first data)]
+    [:svg {:xmlns "http://www.w3.org/2000/svg"
+           :class (name class-key)}
+     (svg-elements joystick-data)]))
 
-(apply str (html/emit* (html/html (coordinates->svg-hiccup (:alpha_R state/svg-edn-files->map)))))
+(comment
+  (apply str (html/emit* (html/html (coordinates->svg-hiccup state/svg-edn-files->map))))
+
+  (coordinates->svg-hiccup state/svg-edn-files->map))
 
 (def hiccup-svg
-  (coordinates->svg-hiccup (:alpha_R state/svg-edn-files->map)))
-
-state/svg-edn-files->map
-(apply str ((comp html/emit* html/html) (:alpha_R state/svg-edn-files->map)))
-(apply str (html/emit* (html/html [:svg {:xmlns "http://www.w3.org/2000/svg"} (:alpha_R state/svg-edn-files->map)])))
+  (coordinates->svg-hiccup state/svg-edn-files->map))

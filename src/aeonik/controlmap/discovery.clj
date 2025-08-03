@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]))
 
-(def ^:private config
+(def config
   "Application configuration loaded from config.edn"
   (-> "config.edn"
       io/resource

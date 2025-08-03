@@ -74,5 +74,11 @@
 
 (def joystick-ids (find-joystick-ids actionmaps))
 
-(comment
-  (find-joystick-ids actionmaps))
+(defn build-job-context []
+  {:joystick-ids joystick-ids
+   :svg-roots svg-roots
+   :svg-config (-> discovery/config :mapping :svg-generation)
+   :config discovery/config
+   :actionmaps actionmaps})
+
+(def context (build-job-context))
