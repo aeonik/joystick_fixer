@@ -45,177 +45,177 @@
   <image href="../resources/images/vpc_panel_1.png" x="0" y="0.00" width="1341" height="948"/>
   <g id="buttons">
     <rect class="button-box" rx="10" ry="10" x="99.09" y="438.65" width="106.31" height="43.89" id="button1"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="438.65" width="106.31" height="43.89" id="button6"/>
-    <rect class="button-box" rx="10" ry="10" x="99.09" y="491.41" width="106.31" height="43.89" id="button7"/>
-    <rect class="button-box" rx="10" ry="10" x="243.44" y="491.41" width="106.31" height="43.89" id="button8"/>
-    <rect class="button-box" rx="10" ry="10" x="98.99" y="544.22" width="106.31" height="43.89" id="button9"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="544.22" width="106.31" height="43.89" id="button10"/>
-    <rect class="button-box" rx="10" ry="10" x="887.04" y="91.68" width="106.31" height="43.89" id="button11"/>
-    <rect class="button-box" rx="10" ry="10" x="1030.32" y="92.65" width="106.31" height="43.89" id="button12"/>
-    <rect class="button-box" rx="10" ry="10" x="1175.64" y="92.65" width="106.31" height="43.89" id="button13"/>
-    <rect class="button-box" rx="10" ry="10" x="886.95" y="145.32" width="106.31" height="43.89" id="button14"/>
-    <rect class="button-box" rx="10" ry="10" x="1030.32" y="145.32" width="106.31" height="43.89" id="button15"/>
-    <rect class="button-box" rx="10" ry="10" x="1175.64" y="145.32" width="106.31" height="43.89" id="button16"/>
-    <rect class="button-box" rx="10" ry="10" x="387.59" y="145.22" width="106.31" height="43.89" id="button17"/>
-    <rect class="button-box" rx="10" ry="10" x="387.59" y="92.56" width="106.31" height="43.89" id="button18"/>
-    <rect class="button-box" rx="10" ry="10" x="588.50" y="92.56" width="106.31" height="43.89" id="button19"/>
-    <rect class="button-box" rx="10" ry="10" x="588.60" y="38.91" width="106.31" height="43.89" id="button20"/>
-    <rect class="button-box" rx="10" ry="10" x="98.99" y="264.21" width="106.31" height="43.89" id="button21"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="264.21" width="106.31" height="43.89" id="button22"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="351.01" width="106.31" height="43.89" id="button23"/>
-    <rect class="button-box" rx="10" ry="10" x="387.69" y="351.11" width="106.31" height="43.89" id="button24"/>
-    <rect class="button-box" rx="10" ry="10" x="886.95" y="686.62" width="106.31" height="43.89" id="button25"/>
-    <rect class="button-box" rx="10" ry="10" x="886.95" y="633.85" width="106.31" height="43.89" id="button26"/>
-    <rect class="button-box" rx="10" ry="10" x="1030.41" y="685.54" width="106.31" height="43.89" id="button27"/>
-    <rect class="button-box" rx="10" ry="10" x="1031.39" y="632.00" width="106.31" height="43.89" id="button28"/>
-    <rect class="button-box" rx="10" ry="10" x="1174.76" y="685.54" width="106.31" height="43.89" id="button29"/>
-    <rect class="button-box" rx="10" ry="10" x="1174.66" y="632.00" width="106.31" height="43.89" id="button30"/>
-    <rect class="button-box" rx="10" ry="10" x="886.95" y="827.06" width="106.31" height="43.89" id="button31"/>
-    <rect class="button-box" rx="10" ry="10" x="886.95" y="773.42" width="106.31" height="43.89" id="button32"/>
-    <rect class="button-box" rx="10" ry="10" x="1031.29" y="825.11" width="106.31" height="43.89" id="button33"/>
-    <rect class="button-box" rx="10" ry="10" x="1030.32" y="772.44" width="106.31" height="43.89" id="button34"/>
-    <rect class="button-box" rx="10" ry="10" x="1175.64" y="825.11" width="106.31" height="43.89" id="button35"/>
-    <rect class="button-box" rx="10" ry="10" x="1175.64" y="772.44" width="106.31" height="43.89" id="button36"/>
-    <rect class="button-box" rx="10" ry="10" x="98.90" y="684.67" width="106.31" height="43.89" id="button37"/>
-    <rect class="button-box" rx="10" ry="10" x="98.99" y="737.33" width="106.31" height="43.89" id="button38"/>
-    <rect class="button-box" rx="10" ry="10" x="98.99" y="632.00" width="106.31" height="43.89" id="button39"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="684.67" width="106.31" height="43.89" id="button40"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="738.31" width="106.31" height="43.89" id="button41"/>
-    <rect class="button-box" rx="10" ry="10" x="243.34" y="632.00" width="106.31" height="43.89" id="button42"/>
-    <rect class="button-box" rx="10" ry="10" x="387.69" y="684.67" width="106.31" height="43.89" id="button43"/>
-    <rect class="button-box" rx="10" ry="10" x="388.66" y="737.33" width="106.31" height="43.89" id="button44"/>
-    <rect class="button-box" rx="10" ry="10" x="387.69" y="632.00" width="106.31" height="43.89" id="button45"/>
-    <rect class="button-box" rx="10" ry="10" x="1074.40" y="352.09" width="106.31" height="43.89" id="button46"/>
-    <rect class="button-box" rx="10" ry="10" x="1126.77" y="426.40" width="106.31" height="43.89" id="button47"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="438.65" width="106.31" height="43.89" id="button2"/>
+    <rect class="button-box" rx="10" ry="10" x="99.09" y="491.41" width="106.31" height="43.89" id="button3"/>
+    <rect class="button-box" rx="10" ry="10" x="243.44" y="491.41" width="106.31" height="43.89" id="button4"/>
+    <rect class="button-box" rx="10" ry="10" x="98.99" y="544.22" width="106.31" height="43.89" id="button5"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="544.22" width="106.31" height="43.89" id="button6"/>
+    <rect class="button-box" rx="10" ry="10" x="887.04" y="91.68" width="106.31" height="43.89" id="button7"/>
+    <rect class="button-box" rx="10" ry="10" x="1030.32" y="92.65" width="106.31" height="43.89" id="button8"/>
+    <rect class="button-box" rx="10" ry="10" x="1175.64" y="92.65" width="106.31" height="43.89" id="button9"/>
+    <rect class="button-box" rx="10" ry="10" x="886.95" y="145.32" width="106.31" height="43.89" id="button10"/>
+    <rect class="button-box" rx="10" ry="10" x="1030.32" y="145.32" width="106.31" height="43.89" id="button11"/>
+    <rect class="button-box" rx="10" ry="10" x="1175.64" y="145.32" width="106.31" height="43.89" id="button12"/>
+    <rect class="button-box" rx="10" ry="10" x="387.59" y="145.22" width="106.31" height="43.89" id="button13"/>
+    <rect class="button-box" rx="10" ry="10" x="387.59" y="92.56" width="106.31" height="43.89" id="button14"/>
+    <rect class="button-box" rx="10" ry="10" x="588.50" y="92.56" width="106.31" height="43.89" id="button15"/>
+    <rect class="button-box" rx="10" ry="10" x="588.60" y="38.91" width="106.31" height="43.89" id="button16"/>
+    <rect class="button-box" rx="10" ry="10" x="98.99" y="264.21" width="106.31" height="43.89" id="button17"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="264.21" width="106.31" height="43.89" id="button18"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="351.01" width="106.31" height="43.89" id="button19"/>
+    <rect class="button-box" rx="10" ry="10" x="387.69" y="351.11" width="106.31" height="43.89" id="button20"/>
+    <rect class="button-box" rx="10" ry="10" x="886.95" y="686.62" width="106.31" height="43.89" id="button21"/>
+    <rect class="button-box" rx="10" ry="10" x="886.95" y="633.85" width="106.31" height="43.89" id="button22"/>
+    <rect class="button-box" rx="10" ry="10" x="1030.41" y="685.54" width="106.31" height="43.89" id="button23"/>
+    <rect class="button-box" rx="10" ry="10" x="1031.39" y="632.00" width="106.31" height="43.89" id="button24"/>
+    <rect class="button-box" rx="10" ry="10" x="1174.76" y="685.54" width="106.31" height="43.89" id="button25"/>
+    <rect class="button-box" rx="10" ry="10" x="1174.66" y="632.00" width="106.31" height="43.89" id="button26"/>
+    <rect class="button-box" rx="10" ry="10" x="886.95" y="827.06" width="106.31" height="43.89" id="button27"/>
+    <rect class="button-box" rx="10" ry="10" x="886.95" y="773.42" width="106.31" height="43.89" id="button28"/>
+    <rect class="button-box" rx="10" ry="10" x="1031.29" y="825.11" width="106.31" height="43.89" id="button29"/>
+    <rect class="button-box" rx="10" ry="10" x="1030.32" y="772.44" width="106.31" height="43.89" id="button30"/>
+    <rect class="button-box" rx="10" ry="10" x="1175.64" y="825.11" width="106.31" height="43.89" id="button31"/>
+    <rect class="button-box" rx="10" ry="10" x="1175.64" y="772.44" width="106.31" height="43.89" id="button32"/>
+    <rect class="button-box" rx="10" ry="10" x="98.90" y="684.67" width="106.31" height="43.89" id="button33"/>
+    <rect class="button-box" rx="10" ry="10" x="98.99" y="737.33" width="106.31" height="43.89" id="button34"/>
+    <rect class="button-box" rx="10" ry="10" x="98.99" y="632.00" width="106.31" height="43.89" id="button35"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="684.67" width="106.31" height="43.89" id="button36"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="738.31" width="106.31" height="43.89" id="button37"/>
+    <rect class="button-box" rx="10" ry="10" x="243.34" y="632.00" width="106.31" height="43.89" id="button38"/>
+    <rect class="button-box" rx="10" ry="10" x="387.69" y="684.67" width="106.31" height="43.89" id="button39"/>
+    <rect class="button-box" rx="10" ry="10" x="388.66" y="737.33" width="106.31" height="43.89" id="button40"/>
+    <rect class="button-box" rx="10" ry="10" x="387.69" y="632.00" width="106.31" height="43.89" id="button41"/>
+    <rect class="button-box" rx="10" ry="10" x="1074.40" y="352.09" width="106.31" height="43.89" id="button42"/>
+    <rect class="button-box" rx="10" ry="10" x="1126.77" y="426.40" width="106.31" height="43.89" id="button43"/>
   </g>
   <g id="labels">
     <text class="button-text" id="lbl_button1" data-for="button1" x="152.25" y="460.59">
       .
     </text>
-    <text class="button-text" id="lbl_button6" data-for="button6" x="296.49" y="460.59">
+    <text class="button-text" id="lbl_button2" data-for="button2" x="296.49" y="460.59">
       .
     </text>
-    <text class="button-text" id="lbl_button7" data-for="button7" x="152.25" y="513.35">
+    <text class="button-text" id="lbl_button3" data-for="button3" x="152.25" y="513.35">
       .
     </text>
-    <text class="button-text" id="lbl_button8" data-for="button8" x="296.59" y="513.35">
+    <text class="button-text" id="lbl_button4" data-for="button4" x="296.59" y="513.35">
       .
     </text>
-    <text class="button-text" id="lbl_button9" data-for="button9" x="152.15" y="566.17">
+    <text class="button-text" id="lbl_button5" data-for="button5" x="152.15" y="566.17">
       .
     </text>
-    <text class="button-text" id="lbl_button10" data-for="button10" x="296.49" y="566.17">
+    <text class="button-text" id="lbl_button6" data-for="button6" x="296.49" y="566.17">
       .
     </text>
-    <text class="button-text" id="lbl_button11" data-for="button11" x="940.20" y="113.62">
+    <text class="button-text" id="lbl_button7" data-for="button7" x="940.20" y="113.62">
       .
     </text>
-    <text class="button-text" id="lbl_button12" data-for="button12" x="1083.47" y="114.60">
+    <text class="button-text" id="lbl_button8" data-for="button8" x="1083.47" y="114.60">
       .
     </text>
-    <text class="button-text" id="lbl_button13" data-for="button13" x="1228.79" y="114.60">
+    <text class="button-text" id="lbl_button9" data-for="button9" x="1228.79" y="114.60">
       .
     </text>
-    <text class="button-text" id="lbl_button14" data-for="button14" x="940.10" y="167.27">
+    <text class="button-text" id="lbl_button10" data-for="button10" x="940.10" y="167.27">
       .
     </text>
-    <text class="button-text" id="lbl_button15" data-for="button15" x="1083.47" y="167.27">
+    <text class="button-text" id="lbl_button11" data-for="button11" x="1083.47" y="167.27">
       .
     </text>
-    <text class="button-text" id="lbl_button16" data-for="button16" x="1228.79" y="167.27">
+    <text class="button-text" id="lbl_button12" data-for="button12" x="1228.79" y="167.27">
       .
     </text>
-    <text class="button-text" id="lbl_button17" data-for="button17" x="440.74" y="167.17">
+    <text class="button-text" id="lbl_button13" data-for="button13" x="440.74" y="167.17">
       .
     </text>
-    <text class="button-text" id="lbl_button18" data-for="button18" x="440.74" y="114.50">
+    <text class="button-text" id="lbl_button14" data-for="button14" x="440.74" y="114.50">
       .
     </text>
-    <text class="button-text" id="lbl_button19" data-for="button19" x="641.66" y="114.50">
+    <text class="button-text" id="lbl_button15" data-for="button15" x="641.66" y="114.50">
       .
     </text>
-    <text class="button-text" id="lbl_button20" data-for="button20" x="641.75" y="60.86">
+    <text class="button-text" id="lbl_button16" data-for="button16" x="641.75" y="60.86">
       .
     </text>
-    <text class="button-text" id="lbl_button21" data-for="button21" x="152.15" y="286.16">
+    <text class="button-text" id="lbl_button17" data-for="button17" x="152.15" y="286.16">
       .
     </text>
-    <text class="button-text" id="lbl_button22" data-for="button22" x="296.49" y="286.16">
+    <text class="button-text" id="lbl_button18" data-for="button18" x="296.49" y="286.16">
       .
     </text>
-    <text class="button-text" id="lbl_button23" data-for="button23" x="296.49" y="372.96">
+    <text class="button-text" id="lbl_button19" data-for="button19" x="296.49" y="372.96">
       .
     </text>
-    <text class="button-text" id="lbl_button24" data-for="button24" x="440.84" y="373.06">
+    <text class="button-text" id="lbl_button20" data-for="button20" x="440.84" y="373.06">
       .
     </text>
-    <text class="button-text" id="lbl_button25" data-for="button25" x="940.10" y="708.56">
+    <text class="button-text" id="lbl_button21" data-for="button21" x="940.10" y="708.56">
       .
     </text>
-    <text class="button-text" id="lbl_button26" data-for="button26" x="940.10" y="655.80">
+    <text class="button-text" id="lbl_button22" data-for="button22" x="940.10" y="655.80">
       .
     </text>
-    <text class="button-text" id="lbl_button27" data-for="button27" x="1083.57" y="707.49">
+    <text class="button-text" id="lbl_button23" data-for="button23" x="1083.57" y="707.49">
       .
     </text>
-    <text class="button-text" id="lbl_button28" data-for="button28" x="1084.54" y="653.94">
+    <text class="button-text" id="lbl_button24" data-for="button24" x="1084.54" y="653.94">
       .
     </text>
-    <text class="button-text" id="lbl_button29" data-for="button29" x="1227.91" y="707.49">
+    <text class="button-text" id="lbl_button25" data-for="button25" x="1227.91" y="707.49">
       .
     </text>
-    <text class="button-text" id="lbl_button30" data-for="button30" x="1227.82" y="653.94">
+    <text class="button-text" id="lbl_button26" data-for="button26" x="1227.82" y="653.94">
       .
     </text>
-    <text class="button-text" id="lbl_button31" data-for="button31" x="940.10" y="849.01">
+    <text class="button-text" id="lbl_button27" data-for="button27" x="940.10" y="849.01">
       .
     </text>
-    <text class="button-text" id="lbl_button32" data-for="button32" x="940.10" y="795.36">
+    <text class="button-text" id="lbl_button28" data-for="button28" x="940.10" y="795.36">
       .
     </text>
-    <text class="button-text" id="lbl_button33" data-for="button33" x="1084.45" y="847.06">
+    <text class="button-text" id="lbl_button29" data-for="button29" x="1084.45" y="847.06">
       .
     </text>
-    <text class="button-text" id="lbl_button34" data-for="button34" x="1083.47" y="794.39">
+    <text class="button-text" id="lbl_button30" data-for="button30" x="1083.47" y="794.39">
       .
     </text>
-    <text class="button-text" id="lbl_button35" data-for="button35" x="1228.79" y="847.06">
+    <text class="button-text" id="lbl_button31" data-for="button31" x="1228.79" y="847.06">
       .
     </text>
-    <text class="button-text" id="lbl_button36" data-for="button36" x="1228.79" y="794.39">
+    <text class="button-text" id="lbl_button32" data-for="button32" x="1228.79" y="794.39">
       .
     </text>
-    <text class="button-text" id="lbl_button37" data-for="button37" x="152.05" y="706.61">
+    <text class="button-text" id="lbl_button33" data-for="button33" x="152.05" y="706.61">
       .
     </text>
-    <text class="button-text" id="lbl_button38" data-for="button38" x="152.15" y="759.28">
+    <text class="button-text" id="lbl_button34" data-for="button34" x="152.15" y="759.28">
       .
     </text>
-    <text class="button-text" id="lbl_button39" data-for="button39" x="152.15" y="653.94">
+    <text class="button-text" id="lbl_button35" data-for="button35" x="152.15" y="653.94">
       .
     </text>
-    <text class="button-text" id="lbl_button40" data-for="button40" x="296.49" y="706.61">
+    <text class="button-text" id="lbl_button36" data-for="button36" x="296.49" y="706.61">
       .
     </text>
-    <text class="button-text" id="lbl_button41" data-for="button41" x="296.49" y="760.25">
+    <text class="button-text" id="lbl_button37" data-for="button37" x="296.49" y="760.25">
       .
     </text>
-    <text class="button-text" id="lbl_button42" data-for="button42" x="296.49" y="653.94">
+    <text class="button-text" id="lbl_button38" data-for="button38" x="296.49" y="653.94">
       .
     </text>
-    <text class="button-text" id="lbl_button43" data-for="button43" x="440.84" y="706.61">
+    <text class="button-text" id="lbl_button39" data-for="button39" x="440.84" y="706.61">
       .
     </text>
-    <text class="button-text" id="lbl_button44" data-for="button44" x="441.81" y="759.28">
+    <text class="button-text" id="lbl_button40" data-for="button40" x="441.81" y="759.28">
       .
     </text>
-    <text class="button-text" id="lbl_button45" data-for="button45" x="440.84" y="653.94">
+    <text class="button-text" id="lbl_button41" data-for="button41" x="440.84" y="653.94">
       .
     </text>
-    <text class="button-text" id="lbl_button46" data-for="button46" x="1127.55" y="374.03">
+    <text class="button-text" id="lbl_button42" data-for="x" x="1127.55" y="374.03">
       .
     </text>
-    <text class="button-text" id="lbl_button47" data-for="button47" x="1179.93" y="448.35">
+    <text class="button-text" id="lbl_button43" data-for="y" x="1179.93" y="448.35">
       .
     </text>
   </g>

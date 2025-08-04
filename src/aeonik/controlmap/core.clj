@@ -55,35 +55,7 @@
   (def svg (-> "svg/panel_3.svg"
                io/resource
                io/reader
-               tx/parse-streaming))
-
-  (def instance->svg
-    {1 "svg/alpha_L.svg"
-     3 "svg/alpha_R.svg"
-     4 "svg/panel_3.svg"
-     5 "svg/vpc_mongoose_t50cm3.svg"
-     6 "svg/panel_1.svg"
-     7 "svg/panel_2.svg"})
-
-  (def product->svg
-    {#"L-VPC Stick MT-50CM2"     "svg/alpha_L.svg"
-     #"R-VPC Stick MT-50CM2"     "svg/alpha_R.svg"
-     #"VPC SharKa-50 Panel"      "svg/panel_3.svg"
-     #"VPC Panel #1"             "svg/panel_1.svg"
-     #"VPC Panel #2"             "svg/panel_2.svg"
-     #"MongoosT-50CM3"           "svg/vpc_mongoose_t50cm3.svg"})
-
-  (def svg-roots
-    (into {}
-          (map (fn [[_ fname]]
-                 (if-let [resource (io/resource fname)]
-                   [fname (-> resource
-                              io/reader
-                              tx/parse-streaming)]
-                   (do
-                     (println "Resource not found:" fname)
-                     [fname nil])))
-               instance->svg))))
+               tx/parse-streaming)))
 
 (comment
   (->> nav
@@ -99,27 +71,6 @@
 
   (map (comp vtd/text vtd/parent) (-> nav
                                       (vtd/select :action))))
-
-(comment
-
-  (f/with-forest (f/new-forest)
-    (-> state/actionmaps
-        (f/add-tree-enlive)
-        (f/find-paths [:** :rebind])
-        f/format-paths))
-
-  (f/with-forest (f/new-forest)
-    (-> state/actionmaps
-        (f/add-tree-enlive)
-        (f/find-paths [:** {:input "js4_ "}])
-        f/format-paths))
-
-  (f/with-forest (f/new-forest)
-    (-> state/actionmaps
-        (f/add-tree-enlive)
-        (f/find-paths-with [:** {:input :*}]
-                           #(str/starts-with? (f/hid->attr (last %) :input) "js5_"))
-        f/format-paths)))
 
 (defn find-joystick-bindings
   "Returns enlive structures containing all action maps for a specific joystick"
@@ -172,38 +123,6 @@
                     :input input
                     :svg-input stripped_input}))))))
 
-(comment
-  (joystick-action-mappings state/actionmaps 5)
-
-  (html/select svg [[:text (html/attr= :data-for "btn_27")]])
-
-  (html/at svg
-           [[:text (html/attr= :data-for "btn_27")]]
-           (html/content "test"))
-
-  (let [mappings (joystick-action-mappings state/actionmaps 1)]
-    (reduce (fn [svg-doc {:keys [svg-input action]}]
-              (if svg-input
-                (html/at svg-doc
-                         [[:text (html/attr= :data-for svg-input)]]
-                         (html/content action))
-                svg-doc))
-            svg
-            mappings))
-
-  (->> (let [mappings (joystick-action-mappings state/actionmaps 1)]
-         (reduce (fn [svg-doc {:keys [svg-input action]}]
-                   (if svg-input
-                     (html/at svg-doc
-                              [[:text (html/attr= :data-for svg-input)]]
-                              (html/content action))
-                     svg-doc))
-                 svg
-                 mappings))
-       html/emit*
-       (apply str)
-       (spit "output.svg")))
-
 (defn joystick-info
   [context instance-id]
   (let [{:keys [joystick-ids
@@ -248,7 +167,7 @@
 
 (comment
   (spit "/tmp/debug.svg" (-> context
-                             (joystick-info 3)
+                             (joystick-info 5)
                              update-svg
                              render-svg)))
 
@@ -268,38 +187,48 @@
             mappings)))
 
 (comment
+  (:short-name (state/joystick-ids 5))
+
+  (state/svg-roots (:short-name (state/joystick-ids 5)))
+
   (let [joystick-id 5
-        filename (state/joystick-ids joystick-id)
+        filename (:short-name (state/joystick-ids joystick-id))
         svg-root (state/svg-roots filename)]
     (update-svg-with-mappings svg-root state/actionmaps joystick-id)))
 
-(defn generate-svg-for-instance
+(defn generate-svg-for-instance!
   "Generates an updated SVG for a specific joystick instance"
-  [actionmaps instance svg-location output-dir]
-  (when-let [svg (get state/svg-roots svg-location)]
-    (let [updated-svg (update-svg-with-mappings svg actionmaps instance)
-          filename (last (str/split svg-location #"/"))
-          svg-config (get-in config [:mapping :svg-generation])
-          prefix (:filename-prefix svg-config)
-          output-path (str output-dir "/" prefix filename)]
-      (io/make-parents output-path)
-      (->> updated-svg
-           html/emit*
-           (apply str)
-           (spit output-path))
-      (println "Generated:" output-path "for instance" instance)
-      output-path)))
+  [context instance-id output-dir]
+  (let [{:keys [svg-roots svg-config joystick-ids]} context
+        {:keys [short-name]} (joystick-ids instance-id)
+        svg-key (some-> short-name keyword)
+        svg-root (svg-roots svg-key)]
+    (when svg-root
+      (let [info (merge (joystick-info context instance-id)
+                        {:svg-root svg-root
+                         :svg-config svg-config})
+            updated-svg (update-svg info)
+            filename    (str (name svg-key) ".svg")
+            prefix      (:filename-prefix svg-config)
+            output-path (str output-dir "/" prefix filename)]
+        (io/make-parents output-path)
+        (spit output-path (render-svg updated-svg))
+        (println "Generated:" output-path "for instance" instance-id)
+        output-path))))
+
+(generate-svg-for-instance! state/context 5 (-> state/context :svg-config :default-output-dir))
 
 (defn generate-all-svgs!
   "Generates updated SVGs for all known joystick instances"
-  ([actionmaps]
-   (let [default-dir (-> config :mapping :svg-generation :default-output-dir)]
-     (generate-all-svgs! actionmaps default-dir)))
-  ([actionmaps output-dir]
-   (let [instance-mapping state/joystick-ids]
-     (->> instance-mapping
-          (keep (fn [[instance svg-location]]
-                  (generate-svg-for-instance actionmaps instance svg-location output-dir)))
+  ([context]
+   (let [default-dir (get-in context [:svg-config :default-output-dir])]
+     (generate-all-svgs! context default-dir)))
+  ([context output-dir]
+   (let [joystick-ids (:joystick-ids context)]
+     (->> joystick-ids
+          (map (fn [[instance-id _]]
+                 (generate-svg-for-instance! context instance-id output-dir)))
+          (remove nil?)
           (into [])))))
 
 (comment

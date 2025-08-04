@@ -255,16 +255,16 @@
     <text class="button-text" id="lbl_button47" data-for="button47" x="123.62" y="663.94">
       .
     </text>
-    <text class="button-text" id="lbl_button48" data-for="button48" x="862.90" y="108.02">
+    <text class="button-text" id="lbl_button48" data-for="x" x="862.90" y="108.02">
       x axis
     </text>
-    <text class="button-text" id="lbl_button49" data-for="button49" x="963.36" y="108.02">
+    <text class="button-text" id="lbl_button49" data-for="y" x="963.36" y="108.02">
       y axis
     </text>
-    <text class="button-text" id="lbl_button50" data-for="button50" x="1064.79" y="109.97">
+    <text class="button-text" id="lbl_button50" data-for="rotx" x="1064.79" y="109.97">
       rx axis
     </text>
-    <text class="button-text" id="lbl_button51" data-for="button51" x="1166.23" y="109.97">
+    <text class="button-text" id="lbl_button51" data-for="roty" x="1166.23" y="109.97">
       ry axis
     </text>
     <text class="button-text" id="lbl_button52" data-for="button52" x="205.55" y="343.06">

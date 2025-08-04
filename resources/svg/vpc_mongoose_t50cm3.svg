@@ -274,22 +274,22 @@
     <text class="button-text" id="lbl_button55" data-for="button55" x="342.33" y="780.34">
      .
     </text>
-    <text class="button-text" id="lbl_button56" data-for="button56" x="1215.72" y="201.89">
+    <text class="button-text" id="lbl_button56" data-for="x" x="1215.72" y="201.89">
      .
     </text>
-    <text class="button-text" id="lbl_button57" data-for="button57" x="1215.72" y="95.68">
+    <text class="button-text" id="lbl_button57" data-for="y" x="1215.72" y="95.68">
      .
     </text>
-    <text class="button-text" id="lbl_button58" data-for="button58" x="388.86" y="242.27">
+    <text class="button-text" id="lbl_button58" data-for="z" x="388.86" y="242.27">
      .
     </text>
-    <text class="button-text" id="lbl_button59" data-for="button59" x="167.66" y="47.40">
+    <text class="button-text" id="lbl_button59" data-for="rotx" x="167.66" y="47.40">
      . 
     </text>
-    <text class="button-text" id="lbl_button60" data-for="button60" x="600.40" y="46.52">
+    <text class="button-text" id="lbl_button60" data-for="roty" x="600.40" y="46.52">
      . 
     </text>
-    <text class="button-text" id="lbl_button61" data-for="button61" x="925.18" y="657.46">
+    <text class="button-text" id="lbl_button61" data-for="rotz" x="925.18" y="657.46">
      . 
     </text>
     <text class="button-text" id="lbl_button62" data-for="button62" x="523.16" y="885.68">

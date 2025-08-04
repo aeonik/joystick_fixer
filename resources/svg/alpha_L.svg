@@ -177,22 +177,22 @@
     <text class="button-text" id="lbl_button31" data-for="button31" x="808.14" y="547.00">
       .
     </text>
-    <text class="button-text" id="lbl_button32" data-for="button32" x="704.76" y="697.20">
+    <text class="button-text" id="lbl_button32" data-for="x" x="704.76" y="697.20">
       x axis
     </text>
-    <text class="button-text" id="lbl_button33" data-for="button33" x="704.76" y="744.01">
+    <text class="button-text" id="lbl_button33" data-for="y" x="704.76" y="744.01">
       y axis
     </text>
-    <text class="button-text" id="lbl_button35" data-for="button35" x="782.10" y="821.06">
+    <text class="button-text" id="lbl_button35" data-for="z" x="782.10" y="821.06">
       .
     </text>
-    <text class="button-text" id="lbl_button36" data-for="button36" x="263.24" y="171.61">
+    <text class="button-text" id="lbl_button36" data-for="rotx" x="263.24" y="171.61">
       .
     </text>
-    <text class="button-text" id="lbl_button37" data-for="button37" x="263.33" y="65.20">
+    <text class="button-text" id="lbl_button37" data-for="roty" x="263.33" y="65.20">
       .
     </text>
-    <text class="button-text" id="lbl_button38" data-for="button38" x="780.25" y="599.77">
+    <text class="button-text" id="lbl_button38" data-for="slider1" x="780.25" y="599.77">
       .
     </text>
   </g>
