@@ -36,9 +36,13 @@
      (svg-elements joystick-data)]))
 
 (comment
-  (apply str (html/emit* (html/html (coordinates->svg-hiccup (nth (seq state/svg-edn-files->map) 1)))))
+  (coordinates->svg-hiccup (nth (seq state/svg-edn-files->map) 4))
+
+  (map coordinates->svg-hiccup state/svg-edn-files->map)
+
+  (apply str (html/emit* (html/html (coordinates->svg-hiccup (nth (seq state/svg-edn-files->map) 4)))))
 
   (coordinates->svg-hiccup state/svg-edn-files->map))
 
 (def hiccup-svg
-  (coordinates->svg-hiccup state/svg-edn-files->map))
+  (coordinates->svg-hiccup (first state/svg-edn-files->map)))

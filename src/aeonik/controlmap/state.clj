@@ -23,7 +23,13 @@
           tx/parse-streaming))))
 
 (defn load-svg-resources
-  "Loads all SVG resources into memory, filtering out missing files"
+  "Loads all SVG resources into memory.
+  Returns a map of filename strings to Enlive trees:
+  {String -> {:tag :svg, :attrs map, :content vector}}
+  e.g.
+  Example:
+  { \"svg/alpha_L.svg\" => {:tag :svg, :attrs {...}, :content [...]}
+    \"svg/alpha_R.svg\" => {:tag :svg, :attrs {...}, :content [...]} }"
   []
   (let [svg-map (discovery/get-product-svg-mapping)]
     (into {}
@@ -35,7 +41,16 @@
                       nil)))
                 svg-map))))
 
-(defn edn-files->map [dir]
+(defn edn-files->map
+  "Loads all EDN files in the given directory and returns a map of parsed data.
+
+  Returns:
+  {Keyword
+   {:text-coordinates
+    {Keyword
+     {:id String, :x float, :y float}
+     :button-rect-dimensions {:width float, :height float, :rx float, :ry float}}}}"
+  [dir]
   (->> (file-seq (io/file dir))
        (filter #(and (.isFile %)
                      (str/ends-with? (.getName %) ".edn")))
