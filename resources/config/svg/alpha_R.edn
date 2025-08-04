@@ -30,11 +30,11 @@
   :29 {:id "button29", :x 147.95, :y 520.67}
   :30 {:id "button30", :x 946.63, :y 723.53}
   :31 {:id "button31", :x 808.14, :y 547.00}
-  :x {:id "button32", :x 704.76, :y 697.20}
-  :y {:id "button33", :x 704.76, :y 744.01}
-  :z {:id "button34", :x 782.10, :y 821.06}
-  :rotx {:id "button35", :x 263.24, :y 171.61}
-  :roty {:id "button36", :x 263.33, :y 65.20}
-  :slider1 {:id "button37", :x 780.25, :y 599.77}}
+  :x {:id "x", :x 704.76, :y 697.20}
+  :y {:id "y", :x 704.76, :y 744.01}
+  :z {:id "z", :x 782.10, :y 821.06}
+  :rotx {:id "rotx", :x 263.24, :y 171.61}
+  :roty {:id "roty", :x 263.33, :y 65.20}
+  :slider1 {:id "slider1", :x 780.25, :y 599.77}}
  :button-rect-dimensions
  {:width 105.33, :height 44.86, :rx 10, :ry 10}}
