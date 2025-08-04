@@ -19,27 +19,37 @@
     :active-file (first svg-files)
     :status nil}))
 
-(defn handle-status-change [status active-file]
-  (let [filename (.getName ^java.io.File active-file)]
+(defn handle-status-change [old new]
+  (let [old-file (:active-file old)
+        new-file (:active-file new)
+        old-status (:status old)
+        new-status (:status new)
+        filename (.getName ^java.io.File new-file)]
+
     (cond
-      (str/starts-with? status "clicked:")
-      (let [id (subs status (count "clicked:"))]
-        (println "Clicked:" id "in file:" filename))
+      ;; Tab switched
+      (not= old-file new-file)
+      (do
+        (swap! *state assoc :status nil)
+        (println "Switched tabs to:" filename))
 
-      (str/starts-with? status "hovered:")
-      (let [id (subs status (count "hovered:"))]
-        (println "Hovered:" id "in file:" filename))
+      ;; Status changed in same tab
+      (and new-status (not= old-status new-status))
+      (cond
+        (str/starts-with? new-status "clicked:")
+        (let [id (subs new-status (count "clicked:"))]
+          (println "Clicked:" id "in file:" filename))
 
-      :else
-      (println "Unknown status message from" filename ":" status))))
+        (str/starts-with? new-status "hovered:")
+        (let [id (subs new-status (count "hovered:"))]
+          (println "Hovered:" id "in file:" filename))
+
+        :else
+        (println "Unknown status message from" filename ":" new-status)))))
 
 (add-watch *state ::status-watcher
            (fn [_ _ old new]
-             (let [old-status (:status old)
-                   new-status (:status new)
-                   active-file (:active-file new)]
-               (when (not= old-status new-status)
-                 (handle-status-change new-status active-file)))))
+             (handle-status-change old new)))
 
 ;; --- View Function ---
 (defn view [{:keys [svg-files active-file status]}]

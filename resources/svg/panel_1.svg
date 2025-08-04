@@ -101,8 +101,8 @@
     <rect class="button-box" rx="10" ry="10" x="387.69" y="684.67" width="106.31" height="43.89" id="button39"/>
     <rect class="button-box" rx="10" ry="10" x="388.66" y="737.33" width="106.31" height="43.89" id="button40"/>
     <rect class="button-box" rx="10" ry="10" x="387.69" y="632.00" width="106.31" height="43.89" id="button41"/>
-    <rect class="button-box" rx="10" ry="10" x="1074.40" y="352.09" width="106.31" height="43.89" id="button42"/>
-    <rect class="button-box" rx="10" ry="10" x="1126.77" y="426.40" width="106.31" height="43.89" id="button43"/>
+    <rect class="button-box" rx="10" ry="10" x="1074.40" y="352.09" width="106.31" height="43.89" id="x"/>
+    <rect class="button-box" rx="10" ry="10" x="1126.77" y="426.40" width="106.31" height="43.89" id="y"/>
   </g>
   <g id="labels">
     <text class="button-text" id="lbl_button1" data-for="button1" x="152.25" y="460.59">

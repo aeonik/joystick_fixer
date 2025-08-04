@@ -111,12 +111,12 @@
     <rect class="button-box" rx="10" ry="10" x="290.54" y="810.19" width="103.58" height="44.77" id="button53"/>
     <rect class="button-box" rx="10" ry="10" x="290.54" y="862.86" width="103.58" height="44.77" id="button54"/>
     <rect class="button-box" rx="10" ry="10" x="290.54" y="757.52" width="103.58" height="44.77" id="button55"/>
-    <rect class="button-box" rx="10" ry="10" x="1163.93" y="179.07" width="103.58" height="44.77" id="button56"/>
-    <rect class="button-box" rx="10" ry="10" x="1163.93" y="72.86" width="103.58" height="44.77" id="button57"/>
-    <rect class="button-box" rx="10" ry="10" x="336.19" y="219.44" width="103.58" height="44.77" id="button58"/>
-    <rect class="button-box" rx="10" ry="10" x="114.99" y="24.58" width="103.58" height="44.77" id="button59"/>
-    <rect class="button-box" rx="10" ry="10" x="548.61" y="24.58" width="103.58" height="44.77" id="button60"/>
-    <rect class="button-box" rx="10" ry="10" x="873.39" y="634.63" width="103.58" height="44.77" id="button61"/>
+    <rect class="button-box" rx="10" ry="10" x="1163.93" y="179.07" width="103.58" height="44.77" id="x"/>
+    <rect class="button-box" rx="10" ry="10" x="1163.93" y="72.86" width="103.58" height="44.77" id="y"/>
+    <rect class="button-box" rx="10" ry="10" x="336.19" y="219.44" width="103.58" height="44.77" id="z"/>
+    <rect class="button-box" rx="10" ry="10" x="114.99" y="24.58" width="103.58" height="44.77" id="rotx"/>
+    <rect class="button-box" rx="10" ry="10" x="548.61" y="24.58" width="103.58" height="44.77" id="roty"/>
+    <rect class="button-box" rx="10" ry="10" x="873.39" y="634.63" width="103.58" height="44.77" id="rotz"/>
     <rect class="button-box" rx="10" ry="10" x="471.37" y="862.86" width="103.58" height="44.77" id="button62"/>
     <rect class="button-box" rx="10" ry="10" x="615.32" y="862.86" width="103.58" height="44.77" id="button63"/>
     <rect class="button-box" rx="10" ry="10" x="758.40" y="862.86" width="103.58" height="44.77" id="button64"/>
@@ -300,13 +300,13 @@
      .
     </text>
     <text class="button-text" id="lbl_button59" data-for="rotx" x="167.66" y="47.40">
-     . 
+     .
     </text>
     <text class="button-text" id="lbl_button60" data-for="roty" x="600.40" y="46.52">
-     . 
+     .
     </text>
     <text class="button-text" id="lbl_button61" data-for="rotz" x="925.18" y="657.46">
-     . 
+     .
     </text>
     <text class="button-text" id="lbl_button62" data-for="button62" x="523.16" y="885.68">
       62-off

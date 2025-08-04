@@ -92,12 +92,12 @@
     <rect class="button-box" rx="10" ry="10" x="95.29" y="498.24" width="105.33" height="44.86" id="button29"/>
     <rect class="button-box" rx="10" ry="10" x="893.97" y="701.10" width="105.33" height="44.86" id="button30"/>
     <rect class="button-box" rx="10" ry="10" x="755.47" y="524.57" width="105.33" height="44.86" id="button31"/>
-    <rect class="button-box" rx="10" ry="10" x="652.09" y="674.77" width="105.33" height="44.86" id="button32"/>
-    <rect class="button-box" rx="10" ry="10" x="652.09" y="721.58" width="105.33" height="44.86" id="button33"/>
-    <rect class="button-box" rx="10" ry="10" x="729.43" y="798.63" width="105.33" height="44.86" id="button35"/>
-    <rect class="button-box" rx="10" ry="10" x="210.57" y="149.17" width="105.33" height="44.86" id="button36"/>
-    <rect class="button-box" rx="10" ry="10" x="210.67" y="42.77" width="105.33" height="44.86" id="button37"/>
-    <rect class="button-box" rx="10" ry="10" x="727.58" y="577.33" width="105.33" height="44.86" id="button38"/>
+    <rect class="button-box" rx="10" ry="10" x="652.09" y="674.77" width="105.33" height="44.86" id="x"/>
+    <rect class="button-box" rx="10" ry="10" x="652.09" y="721.58" width="105.33" height="44.86" id="y"/>
+    <rect class="button-box" rx="10" ry="10" x="729.43" y="798.63" width="105.33" height="44.86" id="z"/>
+    <rect class="button-box" rx="10" ry="10" x="210.57" y="149.17" width="105.33" height="44.86" id="rotx"/>
+    <rect class="button-box" rx="10" ry="10" x="210.67" y="42.77" width="105.33" height="44.86" id="roty"/>
+    <rect class="button-box" rx="10" ry="10" x="727.58" y="577.33" width="105.33" height="44.86" id="slider1"/>
   </g>
   <g id="labels">
     <text class="button-text" id="lbl_button1" data-for="button1" x="1015.59" y="398.66">

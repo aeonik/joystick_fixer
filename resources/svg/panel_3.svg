@@ -117,10 +117,10 @@
     <rect class="button-box" rx="10" ry="10" x="86.31" y="566.65" width="74.61" height="30.72" id="button45"/>
     <rect class="button-box" rx="10" ry="10" x="86.31" y="607.62" width="74.61" height="30.72" id="button46"/>
     <rect class="button-box" rx="10" ry="10" x="86.31" y="648.58" width="74.61" height="30.72" id="button47"/>
-    <rect class="button-box" rx="10" ry="10" x="825.60" y="92.65" width="74.61" height="30.72" id="button48"/>
-    <rect class="button-box" rx="10" ry="10" x="926.06" y="92.65" width="74.61" height="30.72" id="button49"/>
-    <rect class="button-box" rx="10" ry="10" x="1027.49" y="94.60" width="74.61" height="30.72" id="button50"/>
-    <rect class="button-box" rx="10" ry="10" x="1128.92" y="94.60" width="74.61" height="30.72" id="button51"/>
+    <rect class="button-box" rx="10" ry="10" x="825.60" y="92.65" width="74.61" height="30.72" id="x"/>
+    <rect class="button-box" rx="10" ry="10" x="926.06" y="92.65" width="74.61" height="30.72" id="y"/>
+    <rect class="button-box" rx="10" ry="10" x="1027.49" y="94.60" width="74.61" height="30.72" id="rotx"/>
+    <rect class="button-box" rx="10" ry="10" x="1128.92" y="94.60" width="74.61" height="30.72" id="roty"/>
     <rect class="button-box" rx="10" ry="10" x="168.24" y="327.70" width="74.61" height="30.72" id="button52"/>
     <rect class="button-box" rx="10" ry="10" x="270.65" y="327.70" width="74.61" height="30.72" id="button53"/>
     <rect class="button-box" rx="10" ry="10" x="372.08" y="328.68" width="74.61" height="30.72" id="button54"/>

@@ -218,7 +218,7 @@
         (println "Generated:" output-path "for instance" instance-id)
         output-path))))
 
-(generate-svg-for-instance! state/context 5 (-> state/context :svg-config :default-output-dir))
+(comment (generate-svg-for-instance! state/context 5 (-> state/context :svg-config :default-output-dir)))
 
 (defn generate-all-svgs!
   "Generates updated SVGs for all known joystick instances"
