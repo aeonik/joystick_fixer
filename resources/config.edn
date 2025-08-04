@@ -31,12 +31,13 @@
  :mapping
  {:product-svg-mapping
   ;; Regex patterns as strings (will be compiled to Pattern objects)
-  {"L-VPC Stick MT-50CM2"     "svg/alpha_L.svg"
-   "R-VPC Stick MT-50CM2"     "svg/alpha_R.svg"
-   "VPC SharKa-50 Panel"      "svg/panel_3.svg"
-   "VPC Panel #1"             "svg/panel_1.svg"
-   "VPC Panel #2"             "svg/panel_2.svg"
-   "MongoosT-50CM3"           "svg/vpc_mongoose_t50cm3.svg"}
+  {"L-VPC Stick MT-50CM2"     "alpha_L"
+   "R-VPC Stick MT-50CM2"     "alpha_R"
+   "VPC SharKa-50 Panel"      "panel_3"
+   "VPC Panel #1"             "panel_1"
+   "VPC Panel #2"             "panel_2"
+   "MongoosT-50CM3"           "vpc_mongoose_t50cm3"
+   "VPC Rudder Pedals"        "rudder_pedals"}
 
   :action-name-cleaning
   {:remove-v-prefix true
@@ -47,6 +48,5 @@
   :svg-generation
   {:default-output-dir "out"
    :filename-prefix "updated_"
-   :button-id-format "btn_{button-number}"
    :svg-text-selector [:text]
    :data-attribute "data-for"}}}

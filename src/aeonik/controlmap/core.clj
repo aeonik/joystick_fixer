@@ -121,26 +121,6 @@
                            #(str/starts-with? (f/hid->attr (last %) :input) "js5_"))
         f/format-paths)))
 
-(defn ^:deprecated extract-input-action-mappings
-  "Extracts input-action mappings from the actionmaps by traversing the tree structure
-   and fetching the corresponding input and action name for each rebind path.
-
-   Returns a vector of maps containing input and action pairs. Probably not going to use this
-
-  Use find-joystick-bindings instead, per joystick"
-  [actionmaps]
-  (f/with-forest (f/new-forest)
-    (-> actionmaps
-        f/add-tree-enlive
-        (f/find-paths [:** :rebind])
-        (->>
-         (map (fn [path]
-                (let [child  (f/hid->node (peek path))
-                      parent (f/hid->node (peek (pop path)))]
-                  {:input  (:input child)
-                   :action (:name  parent)})))
-         (into [])))))
-
 (defn find-joystick-bindings
   "Returns enlive structures containing all action maps for a specific joystick"
   [actionmaps js-num]
@@ -226,22 +206,32 @@
 
 (defn joystick-info
   [context instance-id]
-  (let [{:keys [joystick-ids svg-roots actionmaps]} context
-        svg-filename (joystick-ids instance-id)
-        svg-root (svg-roots svg-filename)
-        mappings (joystick-action-mappings actionmaps instance-id)]
-    {:instance instance-id
-     :svg-root svg-root
-     :svg-filename svg-filename
-     :mappings mappings}))
+  (let [{:keys [joystick-ids
+                svg-roots
+                svg-edn-files
+                actionmaps]} context
+        {:keys [short-name product match-regex]} (joystick-ids instance-id)
+        svg-key   (some-> short-name keyword)
+        svg-root  (svg-roots svg-key)
+        svg-edn   (svg-edn-files svg-key)
+        mappings  (joystick-action-mappings actionmaps instance-id)]
+    {:instance-id instance-id
+     :short-name  short-name
+     :product     product
+     :match-regex match-regex
+     :svg-key     svg-key
+     :svg-root    svg-root   ;; legacy
+     :svg-edn     svg-edn    ;; current, hiccup-based
+     :mappings    mappings}))
 
-(comment (joystick-info (build-job-context) 4))
+(comment (joystick-info state/context 5))
 
 ;; =============================================================================
 ;; SVG Generation
 ;; =============================================================================
 
-(defn update-svg [{:keys [svg-root mappings]} svg-config]
+(defn update-svg
+  [{:keys [svg-root mappings svg-config]}]
   (let [data-attr (:data-attribute svg-config)]
     (reduce
      (fn [svg-doc {:keys [svg-input action]}]
@@ -256,9 +246,12 @@
 (defn render-svg [svg]
   (apply str (html/emit* svg)))
 
-(render-svg (update-svg (joystick-info context 5) (:svg-config context)))
+(comment
+  (spit "/tmp/debug.svg" (-> context
+                             (joystick-info 3)
+                             update-svg
+                             render-svg)))
 
-;; TODO: need to fix the logic here, I stopped using the btn{button} mapping
 (defn update-svg-with-mappings
   "Updates an SVG with action mappings for a specific joystick"
   [svg actionmaps joystick-num]

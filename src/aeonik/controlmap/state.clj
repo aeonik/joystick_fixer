@@ -4,7 +4,7 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [tupelo.forest :as f]
+   [net.cgrand.enlive-html :as html]
    [tupelo.parse.xml :as tx]))
 
 (defn load-actionmaps
@@ -24,18 +24,15 @@
 
 (defn load-svg-resources
   "Loads all SVG resources into memory.
-  Returns a map of filename strings to Enlive trees:
-  {String -> {:tag :svg, :attrs map, :content vector}}
-  e.g.
-  Example:
-  { \"svg/alpha_L.svg\" => {:tag :svg, :attrs {...}, :content [...]}
-    \"svg/alpha_R.svg\" => {:tag :svg, :attrs {...}, :content [...]} }"
+  Returns a map of keywordized short-names to Enlive trees:
+  {:alpha_L {:tag :svg, :attrs {...}, :content [...]}
+   :alpha_R {:tag :svg, :attrs {...}, :content [...]}}"
   []
   (let [svg-map (discovery/get-product-svg-mapping)]
     (into {}
-          (keep (fn [[key fname]]
-                  (if-let [resource (io/resource fname)]
-                    [fname (-> resource io/reader tx/parse-streaming)]
+          (keep (fn [[_ fname]]
+                  (if-let [resource (io/resource (str "svg/" fname ".svg"))]
+                    [(keyword fname) (-> resource io/reader tx/parse-streaming)]
                     (do
                       (println "Warning: SVG resource not found:" fname)
                       nil)))
@@ -59,27 +56,38 @@
                (edn/read-string (slurp f))]))
        (into {})))
 
-(defn find-joystick-ids
-  "Extracts joystick instance IDs and their corresponding SVGs from actionmaps
-  e.g {1 \"svg/alpha_L.svg\"}"
-  [actionmaps]
-  (let [product-svg-mapping (discovery/get-product-svg-mapping)]
-    (f/with-forest (f/new-forest)
-      (-> actionmaps
-          f/add-tree-enlive
-          (f/find-hids [:** {:type "joystick"}])
-          (->>
-           (keep (fn [hid]
-                   (let [node (f/hid->node hid)
-                         inst (some-> node :instance parse-long)
-                         prod (:Product node)]
-                     (when (and inst prod)
-                       (when-let [[_ svg]
-                                  (some (fn [[re s]]
-                                          (when (re-find re prod) [re s]))
-                                        product-svg-mapping)]
-                         [inst svg])))))
-           (into {}))))))
+(defn extract-joystick-instances [actionmaps]
+  (let [options     (html/select actionmaps
+                                 [[:options (html/attr= :type "joystick")
+                                   (html/attr? :Product)]])
+        svg-mapping (discovery/get-product-svg-mapping)]
+    (into {}
+          (keep (fn [{:keys [attrs]}]
+                  (let [instance (some-> (:instance attrs) parse-long)
+                        product  (:Product attrs)
+                        match    (some (fn [[regex name]]
+                                         (when (re-find regex product)
+                                           [regex name]))
+                                       svg-mapping)]
+                    (cond
+                      (nil? instance)
+                      (do
+                        (println "⚠️ Warning: Skipping joystick with missing or invalid instance ID. Product:" product)
+                        nil)
+
+                      (nil? match)
+                      (do
+                        (println "⚠️ Warning: No SVG mapping found for joystick product:" product)
+                        [instance {:product product
+                                   :short-name nil
+                                   :match-regex nil}])
+
+                      :else
+                      (let [[regex short-name] match]
+                        [instance {:product product
+                                   :short-name short-name
+                                   :match-regex regex}])))))
+          options)))
 
 (def actionmaps (load-actionmaps))
 
@@ -87,12 +95,13 @@
 
 (def svg-edn-files->map (edn-files->map "resources/config/svg/"))
 
-(def joystick-ids (find-joystick-ids actionmaps))
+(def joystick-ids (extract-joystick-instances actionmaps))
 
 (defn build-job-context []
   {:joystick-ids joystick-ids
-   :svg-roots svg-roots
+   :svg-roots svg-roots                  ;; legacy, still useful for debug
    :svg-config (-> discovery/config :mapping :svg-generation)
+   :svg-edn-files svg-edn-files->map     ;; new preferred EDN representation
    :config discovery/config
    :actionmaps actionmaps})
 
