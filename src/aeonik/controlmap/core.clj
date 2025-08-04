@@ -265,14 +265,6 @@
 
 (joystick-action-mappings actionmaps 5)
 
-(defn foo [i] i)
-
-(defn bar [x]
-  (dotimes [i x]
-    (foo i)))
-
-(bar 10)
-
 (comment
   (joystick-action-mappings actionmaps 5)
 
