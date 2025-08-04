@@ -233,7 +233,7 @@
           (remove nil?)
           (into [])))))
 
-(generate-all-svgs! state/context)
+(comment (generate-all-svgs! state/context))
 
 (comment
   (generate-all-svgs! state/actionmaps)
@@ -253,12 +253,6 @@
          html/emit*
          (apply str)
          (spit "updated-panel.svg"))))
-
-(comment (defn process-all-joysticks! [context out-dir]
-           (doseq [instance-id (keys (:joystick-ids context))]
-             (let [ji (joystick-info context instance-id)
-                   updated (update-svg ji (:svg-config context))]
-               (write-updated-svg ji updated (:svg-config context) out-dir)))))
 
 ;; =============================================================================
 ;; Discovery Integration & Status

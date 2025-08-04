@@ -19,26 +19,27 @@
     :active-file (first svg-files)
     :status nil}))
 
-;; --- Status Handler ---
-(defn handle-status-change [status]
-  (cond
-    (str/starts-with? status "clicked:")
-    (let [id (subs status (count "clicked:"))]
-      (println "Clicked:" id))
+(defn handle-status-change [status active-file]
+  (let [filename (.getName ^java.io.File active-file)]
+    (cond
+      (str/starts-with? status "clicked:")
+      (let [id (subs status (count "clicked:"))]
+        (println "Clicked:" id "in file:" filename))
 
-    (str/starts-with? status "hovered:")
-    (let [id (subs status (count "hovered:"))]
-      (println "Hovered:" id))
+      (str/starts-with? status "hovered:")
+      (let [id (subs status (count "hovered:"))]
+        (println "Hovered:" id "in file:" filename))
 
-    :else
-    (println "Unknown status message:" status)))
+      :else
+      (println "Unknown status message from" filename ":" status))))
 
 (add-watch *state ::status-watcher
            (fn [_ _ old new]
              (let [old-status (:status old)
-                   new-status (:status new)]
+                   new-status (:status new)
+                   active-file (:active-file new)]
                (when (not= old-status new-status)
-                 (handle-status-change new-status)))))
+                 (handle-status-change new-status active-file)))))
 
 ;; --- View Function ---
 (defn view [{:keys [svg-files active-file status]}]

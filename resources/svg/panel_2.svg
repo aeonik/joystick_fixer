@@ -1,5 +1,21 @@
 <?xml version="1.0"?>
 <svg xmlns="http://www.w3.org/2000/svg" id="panel" viewBox="0 0 1341 948">
+  <script type="text/javascript"><![CDATA[
+  document.addEventListener("DOMContentLoaded", function() {
+    console.log("SVG DOM ready!");
+
+    const buttons = document.querySelectorAll('.button-box');
+
+    buttons.forEach(function(button) {
+      button.style.cursor = 'pointer';
+      button.addEventListener('click', function() {
+        const message = "clicked:" + button.id;
+        console.log(message);
+        window.status = message;
+      });
+    });
+  });
+]]></script>
   <style>
     image {
       pointer-events: none;

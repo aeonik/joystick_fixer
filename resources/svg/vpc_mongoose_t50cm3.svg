@@ -1,37 +1,20 @@
 <?xml version="1.0"?>
 <svg xmlns="http://www.w3.org/2000/svg" id="panel" viewBox="0 0 1341 948">
   <script type="text/javascript"><![CDATA[
-// Add click handlers to all elements with class 'button-box'
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, looking for buttons...');
-  const buttons = document.querySelectorAll('.button-box');
-  console.log('Found buttons:', buttons.length);
+  document.addEventListener("DOMContentLoaded", function() {
+    console.log("SVG DOM ready!");
 
-  buttons.forEach(function(button) {
-    console.log('Setting up button:', button.id);
-    button.style.cursor = 'pointer';
-    button.addEventListener('click', function() {
-      console.log('Button clicked:', button.id);
-      console.log('Bridge available:', !!window.clojureBridge);
-      // Call back to Clojure via the bridge
-      if (window.clojureBridge) {
-        console.log('Calling bridge...');
-        window.clojureBridge.handleClick(button.id);
-      } else {
-        console.log('No bridge found!');
-      }
+    const buttons = document.querySelectorAll('.button-box');
+
+    buttons.forEach(function(button) {
+      button.style.cursor = 'pointer';
+      button.addEventListener('click', function() {
+        const message = "clicked:" + button.id;
+        console.log(message);
+        window.status = message;
+      });
     });
   });
-
-  // Also try clicking on any rect elements as a test
-  const rects = document.querySelectorAll('rect');
-  console.log('Found rect elements:', rects.length);
-  rects.forEach(function(rect) {
-    if (rect.classList.contains('button-box')) {
-      console.log('Found rect with button-box class:', rect.id);
-    }
-  });
-});
 ]]></script>
   <style>
     html,
