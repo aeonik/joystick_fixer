@@ -1,5 +1,6 @@
 (ns aeonik.controlmap.gui
-  (:require [cljfx.api :as fx]
+  (:require [clojure.string :as str]
+            [cljfx.api :as fx]
             [cljfx.ext.web-view :as fx.ext.web-view])
   (:import [javafx.scene.web WebEvent]))
 
@@ -8,6 +9,26 @@
   (atom
    {:title nil
     :status nil}))
+
+(defn handle-status-change [status]
+  (cond
+    (str/starts-with? status "clicked:")
+    (let [id (subs status (count "clicked:"))]
+      (println "Performing Clojure logic for click on:" id))
+
+    (str/starts-with? status "hovered:")
+    (let [id (subs status (count "hovered:"))]
+      (println "Hover detected on:" id))
+
+    :else
+    (println "Unhandled status message:" status)))
+
+(add-watch *state ::status-watcher
+           (fn [_ _ old new]
+             (let [old-status (:status old)
+                   new-status (:status new)]
+               (when (not= old-status new-status)
+                 (handle-status-change new-status)))))
 
 ;; View function that creates the GUI components
 (defn view [{:keys [title status]}]
