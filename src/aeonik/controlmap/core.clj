@@ -29,20 +29,25 @@
 ;; =============================================================================
 
 (defn clean-action-name
-  "Removes common prefixes from action names for cleaner display"
+  "Removes common prefixes and arbitrary regex patterns from action names for cleaner display"
   [action-name]
   (let [cleaning-config (-> config :mapping :action-name-cleaning)
-        {:keys [remove-v-prefix prefix-filters]} cleaning-config
-        filtered_name (if remove-v-prefix
+        {:keys [remove-v-prefix prefix-filters regex-filters]} cleaning-config
+        filtered-name (if remove-v-prefix
                         (str/replace action-name #"^v_" "")
-                        action-name)]
+                        action-name)
+        prefix-cleaned (reduce
+                        (fn [acc prefix]
+                          (if (str/starts-with? acc prefix)
+                            (subs acc (count prefix))
+                            acc))
+                        filtered-name
+                        prefix-filters)]
     (reduce
-     (fn [acc prefix]
-       (if (str/starts-with? acc prefix)
-         (subs acc (count prefix))
-         acc))
-     filtered_name
-     prefix-filters)))
+     (fn [acc regex-string]
+       (str/replace acc (re-pattern regex-string) ""))
+     prefix-cleaned
+     (or regex-filters []))))
 
 (comment
   (def actionmaps state/actionmaps)
@@ -187,13 +192,10 @@
             mappings)))
 
 (comment
-  (:short-name (state/joystick-ids 5))
-
-  (state/svg-roots (:short-name (state/joystick-ids 5)))
 
   (let [joystick-id 5
         filename (:short-name (state/joystick-ids joystick-id))
-        svg-root (state/svg-roots filename)]
+        svg-root (state/svg-roots (keyword filename))]
     (update-svg-with-mappings svg-root state/actionmaps joystick-id)))
 
 (defn generate-svg-for-instance!
@@ -230,6 +232,8 @@
                  (generate-svg-for-instance! context instance-id output-dir)))
           (remove nil?)
           (into [])))))
+
+(generate-all-svgs! state/context)
 
 (comment
   (generate-all-svgs! state/actionmaps)

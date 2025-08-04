@@ -43,8 +43,8 @@
   {:remove-v-prefix true
    :prefix-filters ["weapon_" "view_" "target_" "seat_" "camera_"
                     "countermeasure_" "look_" "turret_" "ifcs_"
-                    "movement_" "interaction_" "misc_"]}
-
+                    "movement_" "interaction_" "misc_"]
+   :regex-filters ["_mouse$"]}
   :svg-generation
   {:default-output-dir "out"
    :filename-prefix "updated_"
