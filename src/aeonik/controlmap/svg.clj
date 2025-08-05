@@ -1,8 +1,14 @@
 (ns aeonik.controlmap.svg
   (:require [aeonik.controlmap.index :as index]
             [aeonik.controlmap.state :as state]
-            [net.cgrand.enlive-html :as html]))
+            [clojure.string :as str]
+            [clojure.java.io :as io]
+            [net.cgrand.enlive-html :as html]
+            [riveted.core :as vtd])
+  (:import (java.util Base64)
+           (java.nio.file Files)))
 
+;; EDN SVG Section
 (defn make-rect
   [{:keys [id x y]} {:keys [width height rx ry]}]
   [:rect {:x x
@@ -46,3 +52,102 @@
 
 (def hiccup-svg
   (coordinates->svg-hiccup (first state/svg-edn-files->map)))
+
+(map (comp vtd/navigator #(apply str %) html/emit* rest) (-> state/context :svg-roots))
+
+(defn svg-roots->navigator-map
+  "No api in riveted for modification, so this isn't useful"
+  [svg-roots]
+  (into {}
+        (map (fn [root]
+               [(first root)
+                ((comp vtd/navigator #(apply str %) html/emit*) (rest root))])
+             svg-roots)))
+;; Usage:
+(comment (svg-roots->navigator-map (-> state/context :svg-roots)))
+
+;; Helper functions for action maps and svg wrangling
+(defn svg-tree->html-string [svg-tree]
+  "Convert an SVG tree structure to HTML string"
+  (apply str (html/emit* svg-tree)))
+
+(defn create-data-url [html-content]
+  "Create a data URL from HTML content"
+  (str "data:text/html;charset=utf-8,"
+       (java.net.URLEncoder/encode html-content "UTF-8")))
+
+(comment
+  (-> state/svg-roots first rest first)
+
+  (-> state/svg-roots first rest first (html/select [[:text#lbl_button14]]))
+
+  (-> state/svg-roots first rest first (html/select [[:svg :text (html/attr= :data-for "button14")]]))
+
+  (-> state/svg-roots first rest first (html/select [:svg :> :g#labels [:text (html/attr= :data-for "button14")]]))
+
+  (-> state/svg-roots first rest first
+      (html/transform
+       [[:text (html/attr= :data-for "button14")]] (html/content "New text content")))
+
+  (-> state/svg-roots
+      :alpha_L
+      (html/at [:svg :> :g#labels [:text (html/attr= :data-for "button14")]]
+               (html/content "New button text"))))
+
+(defn update-button-text [svg-root button new-text]
+  (into {} (-> svg-root
+               (html/at [:svg :> :g#labels [:text (html/attr= :data-for button)]]
+                        (html/content new-text)))))
+
+(defn relative-to-absolute-url
+  "Convert a relative path to an absolute file URL"
+  [relative-path base-path]
+  (let [clean-path (str/replace relative-path #"^\.\./" "")
+        absolute-path (str base-path "/" clean-path)]
+    (str absolute-path)))
+
+(defn fix-all-relative-images
+  "Convert all relative image paths to absolute file URLs"
+  [svg-tree base-path]
+  (let [selector [[:image (html/attr-starts :href "../")]]
+        text (-> (html/select svg-tree selector)
+                 first
+                 (html/attr-values :href)
+                 first)
+        replacement-text (relative-to-absolute-url text base-path)]
+    (into {} (html/at svg-tree
+                      [[:image (html/attr-starts :href "../")]]
+                      (html/set-attr :href replacement-text)))))
+
+(def ^:private ext->mime
+  {"png" "image/png" "jpg" "image/jpeg" "jpeg" "image/jpeg"
+   "gif" "image/gif" "svg" "image/svg+xml" "webp" "image/webp"})
+
+(defn- mime-type [f]
+  (or (Files/probeContentType (.toPath (io/file f)))
+      (some-> (str/lower-case (str f))
+              (re-find #"\.([^.]+)$") second ext->mime)
+      "application/octet-stream"))
+
+(defn- file->data-uri [f]
+  (let [bytes (Files/readAllBytes (.toPath (io/file f)))
+        b64   (.encodeToString (Base64/getEncoder) bytes)]
+    (str "data:" (mime-type f) ";base64," b64)))
+
+(defn fix-all-relative-images-base64
+  "Inline <image> hrefs that start with \"../\" as base64 data URIs."
+  [svg-tree base-path]
+  (html/at svg-tree
+           [[:image (html/attr-starts :href "../")]]
+           (fn [el]
+             (let [href (-> el (html/attr-values :href) first)
+                   abs (relative-to-absolute-url href base-path)
+                   data (file->data-uri abs)]
+               ;; Set both for SVG 1.1 compatibility.
+               (-> el
+                   (assoc-in [:attrs :href] data)
+                   (assoc-in [:attrs :xlink:href] data))))))
+
+(comment (fix-all-relative-images (-> state/context :svg-roots first rest first) (System/getProperty "user.dir"))
+
+         (fix-all-relative-images-base64 (-> state/context :svg-roots first rest first) (System/getProperty "user.dir")))
