@@ -10,17 +10,33 @@
   (:import [javafx.scene.web WebEvent])
   (:gen-class))
 
-(svg/fix-all-relative-images (-> state/context :svg-roots first rest first) (System/getProperty "user.dir"))
-
-(defn fix-context-images
-  "Fix all image paths in all SVG roots within the context"
+;; TODO: ChatGPT dreck here, need to use my old functions for the mapping that I made
+(defn update-context
+  "Update all SVG roots in-place: apply joystick mappings (when available),
+   then inline relative <image> hrefs as base64. Returns context with :svg-roots replaced."
   [context]
-  (let [base-path (System/getProperty "user.dir")
-        fixed-svg-roots (into {}
-                              (map (fn [[k svg-tree]]
-                                     [k (svg/fix-all-relative-images-base64 svg-tree base-path)])
-                                   (:svg-roots context)))]
-    (assoc context :svg-roots fixed-svg-roots)))
+  (let [{:keys [svg-roots joystick-ids actionmaps]} context
+        base-path (System/getProperty "user.dir")
+        short->id (into {}
+                        (map (fn [[id {:keys [short-name]}]]
+                               [(some-> short-name keyword) id]))
+                        joystick-ids)
+        updated-roots
+        (into {}
+              (map (fn [[k svg]]
+                     (let [maybe-id (get short->id k)
+                           mapped   (if maybe-id
+                                      (core/update-svg-with-mappings svg actionmaps maybe-id)
+
+                                      svg)
+                           inlined  (svg/fix-all-relative-images-base64 mapped base-path)]
+                       [k inlined])))
+              svg-roots)]
+    (-> context
+        (assoc :svg-roots updated-roots))))
+
+(def updated-context
+  (update-context state/context))
 
 (defn svg-tree->html-string
   "Convert an SVG tree structure to HTML string"
@@ -38,16 +54,14 @@
                         (.getBytes html-content "UTF-8"))))
 
 ;; --- Application State ---
-(def fixed-context (fix-context-images state/context))
-
 (def *state
   (atom
-   {:svg-names (keys (-> fixed-context :svg-roots))
-    :active-svg (first (keys (-> fixed-context :svg-roots)))
+   {:svg-names (keys (-> updated-context :svg-roots))
+    :active-svg (first (keys (-> updated-context :svg-roots)))
     :status nil
     :filter-text ""
     :unmapped-actions (core/empty-input-bindings state/actionmaps)
-    :context fixed-context}))
+    :context updated-context}))
 
 (defn handle-status-change [old new]
   (let [old-svg (:active-svg old)

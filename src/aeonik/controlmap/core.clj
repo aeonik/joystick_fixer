@@ -4,14 +4,14 @@
    [aeonik.controlmap.discovery :as discovery]
    [aeonik.controlmap.index :as index]
    [aeonik.controlmap.state :as state :refer [context]]
-   [clojure.data.xml :as xml]
+   [aeonik.controlmap.svg :as svg]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [net.cgrand.enlive-html :as html]
-   [riveted.core :as vtd]
-   [tupelo.forest :as f]
-   [tupelo.parse.xml :as tx]))
+   [hickory.select :as s]
+   [hickory.core :as h]
+   [tupelo.forest :as f]))
 
 ;; =============================================================================
 ;; Configuration and Data Loading
@@ -49,69 +49,23 @@
      prefix-cleaned
      (or regex-filters []))))
 
-(comment
-  (def actionmaps state/actionmaps)
-
-  (def xml-resource (html/xml-resource (io/resource "actionmaps.xml")))
-  (def nav (vtd/navigator (slurp (io/resource "actionmaps.xml"))))
-  (def parsed-xml (xml/parse (io/reader (io/resource "actionmaps.xml")))))
-
-(comment
-  (def svg (-> "svg/panel_3.svg"
-               io/resource
-               io/reader
-               tx/parse-streaming)))
-
-(comment
-  (->> nav
-       (vtd/select :rebind)
-       (map #(vtd/attr % :input)))
-
-  (map #(vtd/attr  % :input)
-       (-> nav
-           (vtd/select :rebind)))
-
-  (-> nav
-      (vtd/select :action)
-      first
-      vtd/parent
-      vtd/fragment)
-
-  (map (comp vtd/fragment vtd/parent) (-> nav
-                                          (vtd/select :action)))
-
-  (map (comp vtd/text vtd/parent) (-> nav
-                                      (vtd/select :action))))
-
-(defn extract-actions [nav]
-  (mapv (fn [action-node]
-          (let [action-name (vtd/attr action-node :name)
-                input-name  (vtd/attr (vtd/select action-node :rebind) :input)
-                fragment    (vtd/fragment action-node)]
-            {:action-name action-name
-             :input-name  input-name
-             :fragment    fragment}))
-        (vtd/select nav :action)))
-
 (defn extract-input-action-mappings
   "Extracts input-action mappings from the actionmaps by traversing the tree structure
    and fetching the corresponding input and action name for each rebind path.
 
-   Returns a vector of maps containing input and action pairs. Probably not going to use this
-
-  Use find-joystick-bindings instead, per joystick"
+  I use this to get unmapped actions "
   [actionmaps]
-  (f/with-forest (f/new-forest)
-    (-> actionmaps
-        f/add-tree-enlive
-        (f/find-paths [:** :rebind])
-        (->>
-         (map (fn [path]
-                (let [child  (f/hid->node (peek path))
-                      parent (f/hid->node (peek (pop path)))]
-                  {:input  (:input child)
-                   :action (:name  parent)})))
-         (into [])))))
+  (->> (h/as-hickory actionmaps)
+       (s/select (s/tag :action))
+       (map (fn [path]
+              {:input  (-> (s/select (s/tag :rebind) path) first :attrs :input)
+               :action (-> path :attrs :name)}))
+       (into [])))
+
+(s/select (s/tag :action)
+          (h/as-hickory (state/load-actionmaps)))
+
+(comment (extract-input-action-mappings (state/load-actionmaps)))
 
 (defn find-joystick-bindings
   "Returns enlive structures containing all action maps for a specific joystick"
@@ -124,6 +78,21 @@
                (f/find-paths-with [:** {:input :*}]
                                   #(str/starts-with? (f/hid->attr (last %) :input) prefix))
                (f/format-paths))))))
+
+(defn find-joystick-bindings-hickory*
+  [actionmaps js-num]
+  (let [prefix (str "js" js-num "_")
+        doc    (cond
+                 (string? actionmaps) (-> actionmaps h/parse h/as-hickory)
+                 (instance? org.jsoup.nodes.Document actionmaps) (h/as-hickory actionmaps)
+                 :else actionmaps)
+        sel    (s/attr :input #(str/starts-with? % prefix))]
+    (s/select sel doc)))
+
+(comment
+  (find-joystick-bindings (state/load-actionmaps-legacy) 4)
+
+  (find-joystick-bindings-hickory* state/actionmaps 4))
 
 (comment
   (->> (find-joystick-bindings state/actionmaps 5)
@@ -143,10 +112,7 @@
                         (-> action
                             (html/select [:rebind])
                             first
-                            (get-in [:attrs :input]))]))))
-
-  (-> xml-resource
-      (html/select [:action])))
+                            (get-in [:attrs :input]))])))))
 
 (defn joystick-action-mappings
   "Returns action mappings for a specific joystick with SVG button references"
@@ -164,6 +130,24 @@
                     :input input
                     :svg-input stripped_input}))))))
 
+(defn joystick-action-mappings
+  "Returns action mappings for a specific joystick with SVG button references"
+  [actionmaps joystick-num]
+  (->> (find-joystick-bindings actionmaps joystick-num)
+       (mapcat #(html/select % [[:action (html/attr? :name)]]))
+       (keep (fn [action]
+               (let [input (-> action
+                               (html/select [:rebind])
+                               first
+                               (get-in [:attrs :input]))
+                     stripped_input (str/replace input #"^js\d+_" "")]
+                 (when input
+                   {:action (get-in action [:attrs :name])
+                    :input input
+                    :svg-input stripped_input}))))))
+
+(comment (joystick-action-mappings state/actionmaps 4))
+
 (defn joystick-info
   [context instance-id]
   (let [{:keys [joystick-ids
@@ -180,8 +164,8 @@
      :product     product
      :match-regex match-regex
      :svg-key     svg-key
-     :svg-root    svg-root   ;; legacy
-     :svg-edn     svg-edn    ;; current, hiccup-based
+     :svg-root    svg-root ;; legacy
+     :svg-edn     svg-edn  ;; current, hiccup-based
      :mappings    mappings}))
 
 (comment (joystick-info state/context 5))
@@ -227,12 +211,60 @@
             svg
             mappings)))
 
+(defn update-svg-for-instance
+  "Return updated SVG for an instance-id, or nil if no base svg exists."
+  [context instance-id]
+  (let [{:keys [svg-roots joystick-ids actionmaps]} context
+        {:keys [short-name]} (joystick-ids instance-id)
+        svg-key  (some-> short-name keyword)
+        svg-root (get svg-roots svg-key)]
+    (when svg-root
+      (update-svg-with-mappings svg-root actionmaps instance-id))))
+
+(defn update-all-svgs-in-memory
+  "Returns {instance-id -> updated-svg-tree} for all instances."
+  [context]
+  (let [ids (keys (:joystick-ids context))]
+    (->> ids
+         (map (fn [id]
+                (when-let [svg (update-svg-for-instance context id)]
+                  [id svg])))
+         (filter some?)                ;; remove nils
+         (into {}))))
+
+(comment (update-all-svgs-in-memory state/context))
+
 (comment
 
   (let [joystick-id 5
         filename (:short-name (state/joystick-ids joystick-id))
         svg-root (state/svg-roots (keyword filename))]
     (update-svg-with-mappings svg-root state/actionmaps joystick-id)))
+
+;; TODO: ChatGPT dreck here, need to use my old functions for the mapping that I made
+(defn update-context
+  "Update all SVG roots in-place: apply joystick mappings (when available),
+   then inline relative <image> hrefs as base64. Returns context with :svg-roots replaced."
+  [context]
+  (let [{:keys [svg-roots joystick-ids actionmaps]} context
+        base-path (System/getProperty "user.dir")
+        short->id (into {}
+                        (map (fn [[id {:keys [short-name]}]]
+                               [(some-> short-name keyword) id]))
+                        joystick-ids)
+        updated-roots
+        (into {}
+              (map (fn [[k svg]]
+                     (let [maybe-id (get short->id k)
+                           mapped   (if maybe-id
+                                      (update-svg-with-mappings svg actionmaps maybe-id)
+
+                                      svg)
+                           inlined  (svg/fix-all-relative-images-base64 mapped base-path)]
+                       [k inlined])))
+              svg-roots)]
+    (-> context
+        (assoc :svg-roots updated-roots))))
 
 (defn generate-svg-for-instance!
   "Generates an updated SVG for a specific joystick instance"

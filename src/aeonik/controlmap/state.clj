@@ -5,7 +5,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [net.cgrand.enlive-html :as html]
-   [tupelo.parse.xml :as tx]))
+   [hickory.core :as h]
+   [hickory.select :as s]))
 
 (defn load-actionmaps
   "Loads actionmaps XML, first trying discovery, then falling back to resources"
@@ -14,13 +15,14 @@
     (do
       (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
       (with-open [reader (io/reader actionmaps-file)]
-        (tx/parse-streaming reader)))
+        (h/parse (slurp reader))))
     (do
       (println "No actionmaps found via discovery, using bundled resource")
       (-> "actionmaps.xml"
           io/resource
           io/reader
-          tx/parse-streaming))))
+          slurp
+          h/parse))))
 
 (defn load-svg-resources
   "Loads all SVG resources into memory.
@@ -32,7 +34,7 @@
     (into {}
           (keep (fn [[_ fname]]
                   (if-let [resource (io/resource (str "svg/" fname ".svg"))]
-                    [(keyword fname) (-> resource io/reader tx/parse-streaming)]
+                    [(keyword fname) (-> resource io/reader slurp h/parse)]
                     (do
                       (println "Warning: SVG resource not found:" fname)
                       nil)))
@@ -57,14 +59,16 @@
        (into {})))
 
 (defn extract-joystick-instances [actionmaps]
-  (let [options     (html/select actionmaps
-                                 [[:options (html/attr= :type "joystick")
-                                   (html/attr? :Product)]])
+  (let [options (s/select (s/and (s/tag :options)
+                                 (s/attr :type #(= % "joystick"))
+                                 (s/attr :product #(not= % nil)))
+                          (h/as-hickory actionmaps))
+
         svg-mapping (discovery/get-product-svg-mapping)]
     (into {}
           (keep (fn [{:keys [attrs]}]
                   (let [instance (some-> (:instance attrs) parse-long)
-                        product  (:Product attrs)
+                        product  (:product attrs)
                         match    (some (fn [[regex name]]
                                          (when (re-find regex product)
                                            [regex name]))
