@@ -5,8 +5,40 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [net.cgrand.enlive-html :as html]
+   [tupelo.parse.xml :as tx]
    [hickory.core :as h]
    [hickory.select :as s]))
+
+(defn load-actionmaps-legacy
+  "Loads actionmaps XML, first trying discovery, then falling back to resources"
+  []
+  (if-let [actionmaps-file (discovery/find-actionmaps)]
+    (do
+      (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
+      (with-open [reader (io/reader actionmaps-file)]
+        (tx/parse-streaming reader)))
+    (do
+      (println "No actionmaps found via discovery, using bundled resource")
+      (-> "actionmaps.xml"
+          io/resource
+          io/reader
+          tx/parse-streaming))))
+
+(defn load-actionmaps
+  "Loads actionmaps XML, first trying discovery, then falling back to resources"
+  []
+  (if-let [actionmaps-file (discovery/find-actionmaps)]
+    (do
+      (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
+      (with-open [reader (io/reader actionmaps-file)]
+        (h/parse (slurp reader))))
+    (do
+      (println "No actionmaps found via discovery, using bundled resource")
+      (-> "actionmaps.xml"
+          io/resource
+          io/reader
+          slurp
+          h/parse))))
 
 (defn load-actionmaps
   "Loads actionmaps XML, first trying discovery, then falling back to resources"
