@@ -348,7 +348,7 @@
   (if-let [actionmaps state/actionmaps]
     (do
       (println "Generating SVGs...")
-      (let [generated (generate-all-svgs! actionmaps)]
+      (let [generated (generate-all-svgs! state/context)]
         (println "Successfully generated" (count generated) "SVG files")
 
         ;; Generate HTML index

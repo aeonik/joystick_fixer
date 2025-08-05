@@ -41,15 +41,16 @@
 ;; Joystick Information & Mapping
 ;; =============================================================================
 
+;; TODO: Use state/context for this, don't hard code this here, see state/joystick-ids
 (defn get-joystick-display-info
   "Returns display information for joysticks based on their SVG filenames"
   []
-  {"alpha_L.svg"              {:title "Alpha L" :description "Left Alpha joystick mappings"}
-   "alpha_R.svg"              {:title "Alpha R" :description "Right Alpha joystick mappings"}
-   "panel_1.svg"              {:title "Panel 1" :description "Panel 1 mappings"}
-   "panel_2.svg"              {:title "Panel 2" :description "Panel 2 mappings"}
-   "panel_3.svg"              {:title "Panel 3" :description "SharKa‑50 panel mappings"}
-   "vpc_mongoose_t50cm3.svg"  {:title "VPC Mongoose T50CM3" :description "Mongoose joystick mappings"}})
+  {"alpha_L"              {:title "Alpha L" :description "Left Alpha joystick mappings"}
+   "alpha_R"              {:title "Alpha R" :description "Right Alpha joystick mappings"}
+   "panel_1"              {:title "Panel 1" :description "Panel 1 mappings"}
+   "panel_2"              {:title "Panel 2" :description "Panel 2 mappings"}
+   "panel_3"              {:title "Panel 3" :description "SharKa‑50 panel mappings"}
+   "vpc_mongoose_t50cm3"  {:title "VPC Mongoose T50CM3" :description "Mongoose joystick mappings"}})
 
 (defn get-generated-svg-info
   "Returns information about generated SVGs based on instance mapping and config"
@@ -61,8 +62,8 @@
         display-info (get-joystick-display-info)]
     (->> instance-mapping
          (map (fn [[instance svg-path]]
-                (let [filename (last (str/split svg-path #"/"))
-                      generated-filename (str filename-prefix filename)
+                (let [filename (:short-name svg-path)
+                      generated-filename (str filename-prefix filename ".svg")
                       generated-path (str output-dir "/" generated-filename)
                       info (get display-info filename {:title (str "Instance " instance)
                                                        :description "Unknown device"})]
