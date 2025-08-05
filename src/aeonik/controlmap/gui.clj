@@ -2,8 +2,12 @@
   (:require [clojure.string :as str]
             [clojure.java.io :as io]
             [cljfx.api :as fx]
-            [cljfx.ext.web-view :as fx.ext.web-view])
+            [cljfx.ext.web-view :as fx.ext.web-view]
+            [aeonik.controlmap.core :as core]
+            [aeonik.controlmap.state :as state])
   (:import [javafx.scene.web WebEvent]))
+
+(core/empty-input-bindings state/actionmaps)
 
 ;; --- Application State ---
 (def svg-files
@@ -17,7 +21,8 @@
   (atom
    {:svg-files svg-files
     :active-file (first svg-files)
-    :status nil}))
+    :status nil
+    :filter-text nil}))
 
 (defn handle-status-change [old new]
   (let [old-file (:active-file old)
@@ -51,6 +56,24 @@
            (fn [_ _ old new]
              (handle-status-change old new)))
 
+(defn unmapped-actions-panel [actionmaps]
+  (let [unmapped (aeonik.controlmap.core/empty-input-bindings actionmaps)]
+    {:fx/type :v-box
+     :spacing 10
+     :padding 10
+     :children
+     [{:fx/type :label
+       :text "unmapped actions"
+       :style "-fx-font-size: 16px; -fx-font-weight: bold;"}
+      {:fx/type :text-field
+       :prompt-text "filter..."} ;; you can wire this later with local or global state
+      {:fx/type :list-view
+       :v-box/vgrow :always
+       :items (mapv :action unmapped)
+       :pref-height 300
+       :pref-width 350}] ;; feel free to bind height later if needed
+     }))
+
 ;; --- View Function ---
 (defn view [{:keys [svg-files active-file status]}]
   {:fx/type :stage
@@ -59,30 +82,36 @@
    :scene
    {:fx/type :scene
     :root
-    {:fx/type :tab-pane
-     :side :top
-     :tabs (mapv
-            (fn [^java.io.File f]
-              {:fx/type :tab
-               :id (.getPath f)
-               :text (.getName f)
-               :closable false
-               :on-selection-changed
-               (fn [e]
-                 (let [^javafx.scene.control.Tab tab (.getSource e)]
-                   (when (.isSelected tab)
-                     (swap! *state assoc :active-file f))))
-               :content
-               {:fx/type fx.ext.web-view/with-engine-props
-                :desc {:fx/type :web-view
-                       :max-width Double/MAX_VALUE
-                       :max-height Double/MAX_VALUE}
-                :props {:url (str "file://" (.getAbsolutePath f))
-                        :on-title-changed (fn [_]) ;; you could update title separately
-                        :on-status-changed
-                        (fn [^WebEvent evt]
-                          (swap! *state assoc :status (.getData evt)))}}})
-            svg-files)}}})
+    {:fx/type :h-box
+     :spacing 20
+     :padding 10
+     :children
+     [{:fx/type :tab-pane
+       :side :top
+       :h-box/hgrow :always
+       :tabs (mapv
+              (fn [^java.io.File f]
+                {:fx/type :tab
+                 :id (.getPath f)
+                 :text (.getName f)
+                 :closable false
+                 :on-selection-changed
+                 (fn [e]
+                   (let [^javafx.scene.control.Tab tab (.getSource e)]
+                     (when (.isSelected tab)
+                       (swap! *state assoc :active-file f))))
+                 :content
+                 {:fx/type fx.ext.web-view/with-engine-props
+                  :desc {:fx/type :web-view
+                         :max-width Double/MAX_VALUE
+                         :max-height Double/MAX_VALUE}
+                  :props {:url (str "file://" (.getAbsolutePath f))
+                          :on-status-changed
+                          (fn [^WebEvent evt]
+                            (swap! *state assoc :status (.getData evt)))}}})
+              svg-files)}
+      ;; Right-side global unmapped actions list
+      (unmapped-actions-panel state/actionmaps)]}}})
 
 ;; --- Renderer ---
 (def renderer

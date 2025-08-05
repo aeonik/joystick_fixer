@@ -71,11 +71,53 @@
        (-> nav
            (vtd/select :rebind)))
 
+  (-> nav
+      (vtd/select :action)
+      first
+      vtd/parent
+      vtd/fragment)
+
   (map (comp vtd/fragment vtd/parent) (-> nav
                                           (vtd/select :action)))
 
   (map (comp vtd/text vtd/parent) (-> nav
                                       (vtd/select :action))))
+
+(defn extract-actions [nav]
+  (mapv (fn [action-node]
+          (let [action-name (vtd/attr action-node :name)
+                input-name  (vtd/attr (vtd/select action-node :rebind) :input)
+                fragment    (vtd/fragment action-node)]
+            {:action-name action-name
+             :input-name  input-name
+             :fragment    fragment}))
+        (vtd/select nav :action)))
+
+(filter #(clojure.string/blank? (:input-name %)) (extract-actions nav))
+
+(remove #(clojure.string/blank? (:input-name %)) (extract-actions nav))
+
+(defn ^:deprecated extract-input-action-mappings
+  "Extracts input-action mappings from the actionmaps by traversing the tree structure
+   and fetching the corresponding input and action name for each rebind path.
+
+   Returns a vector of maps containing input and action pairs. Probably not going to use this
+
+  Use find-joystick-bindings instead, per joystick"
+  [actionmaps]
+  (f/with-forest (f/new-forest)
+    (-> actionmaps
+        f/add-tree-enlive
+        (f/find-paths [:** :rebind])
+        (->>
+         (map (fn [path]
+                (let [child  (f/hid->node (peek path))
+                      parent (f/hid->node (peek (pop path)))]
+                  {:input  (:input child)
+                   :action (:name  parent)})))
+         (into [])))))
+
+(extract-input-action-mappings)
 
 (defn find-joystick-bindings
   "Returns enlive structures containing all action maps for a specific joystick"
@@ -257,6 +299,16 @@
 ;; =============================================================================
 ;; Discovery Integration & Status
 ;; =============================================================================
+
+(defn empty-input-bindings
+  ([actionmaps]
+   (filter #(clojure.string/blank? (:input %))
+           (extract-input-action-mappings actionmaps)))
+
+  ([actionmaps kw]
+   (->> (extract-input-action-mappings actionmaps)
+        (filter #(clojure.string/blank? (:input %)))
+        (filter #(clojure.string/includes? (:action %) (name kw))))))
 
 (defn system-status
   "Returns comprehensive system status including discovery info"
