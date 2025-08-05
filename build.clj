@@ -38,7 +38,10 @@
                   :compile-opts {:direct-linking true}
                   :ns-compile '[aeonik.controlmap.core
                                 aeonik.controlmap.discovery
-                                aeonik.controlmap.index]})
+                                aeonik.controlmap.index
+                                aeonik.controlmap.state
+                                aeonik.controlmap.gui
+                                aeonik.controlmap.svg]})
 
   ;; Step 3: build the jar
   (println "📦 Creating uberjar...")

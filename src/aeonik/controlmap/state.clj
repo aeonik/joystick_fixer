@@ -97,11 +97,26 @@
 
 (def joystick-ids (extract-joystick-instances actionmaps))
 
+(defn get-display-name
+  "Useful for the gui"
+  [^java.io.File f]
+  (let [filename (.getName f)
+        short-name (-> filename
+                       (str/replace #"^updated_" "")
+                       (str/replace #"\.svg$" ""))
+        joystick-entry (->> joystick-ids
+                            vals
+                            (filter #(= (:short-name %) short-name))
+                            first)]
+    (if joystick-entry
+      (str (:match-regex joystick-entry))
+      short-name)))
+
 (defn build-job-context []
   {:joystick-ids joystick-ids
-   :svg-roots svg-roots                  ;; legacy, still useful for debug
+   :svg-roots svg-roots ;; legacy, still useful for debug
    :svg-config (-> discovery/config :mapping :svg-generation)
-   :svg-edn-files svg-edn-files->map     ;; new preferred EDN representation
+   :svg-edn-files svg-edn-files->map ;; new preferred EDN representation
    :config discovery/config
    :actionmaps actionmaps})
 

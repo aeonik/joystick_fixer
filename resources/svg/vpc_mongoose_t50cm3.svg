@@ -41,7 +41,7 @@
     }
     .button-text {
       pointer-events: none;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 500;
       text-anchor: start;
       dominant-baseline: middle;

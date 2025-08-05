@@ -98,7 +98,7 @@
               (fn [^java.io.File f]
                 {:fx/type :tab
                  :id (.getPath f)
-                 :text (.getName f)
+                 :text (state/get-display-name f)
                  :closable false
                  :on-selection-changed
                  (fn [e]
