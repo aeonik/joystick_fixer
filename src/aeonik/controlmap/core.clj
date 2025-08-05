@@ -80,19 +80,15 @@
                (f/format-paths))))))
 
 (defn find-joystick-bindings-hickory*
-  [actionmaps js-num]
+  [input-actions* js-num]
   (let [prefix (str "js" js-num "_")
-        doc    (cond
-                 (string? actionmaps) (-> actionmaps h/parse h/as-hickory)
-                 (instance? org.jsoup.nodes.Document actionmaps) (h/as-hickory actionmaps)
-                 :else actionmaps)
-        sel    (s/attr :input #(str/starts-with? % prefix))]
-    (s/select sel doc)))
+        input-actions-filtered (filter #(str/starts-with? (:input %) prefix) input-actions*)]
+    input-actions-filtered))
 
 (comment
   (find-joystick-bindings (state/load-actionmaps-legacy) 4)
 
-  (find-joystick-bindings-hickory* state/actionmaps 4))
+  (find-joystick-bindings-hickory* (extract-input-action-mappings state/actionmaps) 4))
 
 (comment
   (->> (find-joystick-bindings state/actionmaps 5)
@@ -146,7 +142,7 @@
                     :input input
                     :svg-input stripped_input}))))))
 
-(comment (joystick-action-mappings state/actionmaps 4))
+(comment (joystick-action-mappings (state/load-actionmaps-legacy) 4))
 
 (defn joystick-info
   [context instance-id]
