@@ -48,7 +48,7 @@
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main 'aeonik.controlmap.core})
+           :main 'aeonik.controlmap.gui})
 
   (println "✅ Build complete!")
   (println "   ├─ JAR:     " uber-file)

@@ -5,7 +5,8 @@
             [cljfx.ext.web-view :as fx.ext.web-view]
             [aeonik.controlmap.core :as core]
             [aeonik.controlmap.state :as state])
-  (:import [javafx.scene.web WebEvent]))
+  (:import [javafx.scene.web WebEvent])
+  (:gen-class))
 
 ;; --- Application State ---
 (def svg-files
@@ -123,5 +124,7 @@
   (fx/create-renderer
    :middleware (fx/wrap-map-desc #'view)))
 
-;; --- App Start ---
-(fx/mount-renderer *state renderer)
+(defn -main
+  [& args]
+  ;; --- App Start ---
+  (fx/mount-renderer *state renderer))
