@@ -7,8 +7,6 @@
             [aeonik.controlmap.state :as state])
   (:import [javafx.scene.web WebEvent]))
 
-(core/empty-input-bindings state/actionmaps)
-
 ;; --- Application State ---
 (def svg-files
   (->> (file-seq (io/file "out"))
@@ -22,7 +20,8 @@
    {:svg-files svg-files
     :active-file (first svg-files)
     :status nil
-    :filter-text nil}))
+    :filter-text ""
+    :unmapped-actions (core/empty-input-bindings state/actionmaps)}))
 
 (defn handle-status-change [old new]
   (let [old-file (:active-file old)
@@ -56,8 +55,11 @@
            (fn [_ _ old new]
              (handle-status-change old new)))
 
-(defn unmapped-actions-panel [actionmaps]
-  (let [unmapped (aeonik.controlmap.core/empty-input-bindings actionmaps)]
+(defn unmapped-actions-panel [filter-text unmapped-actions]
+  (let [all-unmapped unmapped-actions
+        filtered (if (str/blank? filter-text)
+                   all-unmapped
+                   (filter #(str/includes? (:action %) filter-text) all-unmapped))]
     {:fx/type :v-box
      :spacing 10
      :padding 10
@@ -65,17 +67,20 @@
      [{:fx/type :label
        :text "unmapped actions"
        :style "-fx-font-size: 16px; -fx-font-weight: bold;"}
+
       {:fx/type :text-field
-       :prompt-text "filter..."} ;; you can wire this later with local or global state
+       :prompt-text "filter..."
+       :text filter-text
+       :on-text-changed #(swap! *state assoc :filter-text %)}
+
       {:fx/type :list-view
        :v-box/vgrow :always
-       :items (mapv :action unmapped)
+       :items (mapv :action filtered)
        :pref-height 300
-       :pref-width 350}] ;; feel free to bind height later if needed
-     }))
+       :pref-width 350}]}))
 
 ;; --- View Function ---
-(defn view [{:keys [svg-files active-file status]}]
+(defn view [{:keys [svg-files active-file status filter-text unmapped-actions]}]
   {:fx/type :stage
    :showing true
    :title (str (.getName ^java.io.File active-file))
@@ -111,7 +116,7 @@
                             (swap! *state assoc :status (.getData evt)))}}})
               svg-files)}
       ;; Right-side global unmapped actions list
-      (unmapped-actions-panel state/actionmaps)]}}})
+      (unmapped-actions-panel filter-text unmapped-actions)]}}})
 
 ;; --- Renderer ---
 (def renderer

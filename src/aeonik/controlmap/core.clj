@@ -93,11 +93,7 @@
              :fragment    fragment}))
         (vtd/select nav :action)))
 
-(filter #(clojure.string/blank? (:input-name %)) (extract-actions nav))
-
-(remove #(clojure.string/blank? (:input-name %)) (extract-actions nav))
-
-(defn ^:deprecated extract-input-action-mappings
+(defn extract-input-action-mappings
   "Extracts input-action mappings from the actionmaps by traversing the tree structure
    and fetching the corresponding input and action name for each rebind path.
 
@@ -116,8 +112,6 @@
                   {:input  (:input child)
                    :action (:name  parent)})))
          (into [])))))
-
-(extract-input-action-mappings)
 
 (defn find-joystick-bindings
   "Returns enlive structures containing all action maps for a specific joystick"
