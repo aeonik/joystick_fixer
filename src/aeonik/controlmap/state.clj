@@ -26,7 +26,8 @@
         (-> source
             io/reader
             slurp
-            h/parse))
+            h/parse
+            h/as-hickory))  ; CONVERT TO HICKORY HERE
       (throw (ex-info "No actionmaps found"
                       {:searched-paths (discovery/get-search-paths)})))))
 
@@ -36,14 +37,18 @@
   (try
     (when-let [resource (io/resource (str "svg/" fname ".svg"))]
       [(keyword fname)
-       (-> resource io/reader slurp h/parse)])
+       (-> resource
+           io/reader
+           slurp
+           h/parse
+           h/as-hickory)])  ; CONVERT TO HICKORY HERE
     (catch Exception e
       (println (format "Warning: Failed to load SVG '%s': %s"
                        fname (.getMessage e)))
       nil)))
 
 (defn load-svg-resources
-  "Loads all SVG resources into memory.
+  "Loads all SVG resources into memory as Hickory trees.
    Returns a map of keywordized short-names to Hickory trees.
    Continues on individual load failures."
   []
@@ -131,12 +136,13 @@
 
 (defn extract-joystick-instances
   "Extracts all joystick instance configurations from actionmaps.
-   Returns a map of instance-id -> info."
+   Returns a map of instance-id -> info.
+   Note: actionmaps should already be in Hickory format."
   [actionmaps]
   (let [selector (s/and (s/tag :options)
                         (s/attr :type #(= % "joystick"))
                         (s/attr :product))
-        options (s/select selector (h/as-hickory actionmaps))
+        options (s/select selector actionmaps)  ; Already Hickory, no conversion needed
         svg-mapping (discovery/get-product-svg-mapping)]
     (->> options
          (keep (partial extract-joystick-instance svg-mapping))
@@ -173,10 +179,12 @@
   "Builds a complete context map with all necessary data.
    This is the main entry point for initializing the system.
 
+   All data structures are in Hickory format for consistency.
+
    Options:
    - :skip-svgs - Don't load SVG resources (for faster testing)
    - :skip-edn - Don't load EDN configs
-   - :actionmaps - Pre-loaded actionmaps (avoids re-loading)"
+   - :actionmaps - Pre-loaded actionmaps (must be in Hickory format)"
   [& {:keys [skip-svgs skip-edn actionmaps]}]
   (println "\n══════════════════════════════════════")
   (println "   Initializing ControlMap Context")
@@ -184,7 +192,7 @@
 
   (let [start-time (System/currentTimeMillis)
 
-        ;; Load actionmaps
+        ;; Load actionmaps (already in Hickory format)
         _ (println "▶ Loading actionmaps...")
         actionmaps (or actionmaps (load-actionmaps))
 
@@ -193,7 +201,7 @@
         joystick-ids (extract-joystick-instances actionmaps)
         _ (println (format "  Found %d joystick instances" (count joystick-ids)))
 
-        ;; Load SVG resources
+        ;; Load SVG resources (already in Hickory format)
         _ (println "▶ Loading SVG resources...")
         svg-roots (if skip-svgs
                     (do (println "  Skipped (skip-svgs flag)") {})
@@ -214,9 +222,9 @@
                      (/ elapsed 1000.0)))
     (println "══════════════════════════════════════\n")
 
-    {:actionmaps actionmaps
+    {:actionmaps actionmaps          ; Hickory format
      :joystick-ids joystick-ids
-     :svg-roots svg-roots
+     :svg-roots svg-roots            ; Map of Hickory trees
      :svg-config (-> config :mapping :svg-generation)
      :svg-edn-configs edn-configs
      :config config
@@ -246,7 +254,8 @@
 ;; =============================================================================
 
 (def context
-  "Lazy-initialized context. Will be computed on first access."
+  "Lazy-initialized context. Will be computed on first access.
+   All data is in Hickory format."
   (delay (build-context)))
 
 (defn ensure-initialized
@@ -274,9 +283,13 @@
   ;; Access lazy context
   @context
 
-  ;; Check what's loaded
+  ;; Check what's loaded (all should be Hickory format)
   (keys (:svg-roots @*context*))
   (keys (:joystick-ids @*context*))
+
+  ;; Verify Hickory format
+  (-> @*context* :svg-roots first val :type)  ; Should be :element
+  (-> @*context* :actionmaps :type)           ; Should be :document
 
   ;; Test display name
   (get-display-name "updated_alpha_L.svg" (:joystick-ids @*context*)))

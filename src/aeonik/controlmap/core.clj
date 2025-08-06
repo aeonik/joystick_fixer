@@ -44,9 +44,10 @@
 
 (defn extract-input-action-mappings
   "Extracts all input-action mappings from the actionmaps.
-   Returns a vector of {:input '...' :action '...'} maps."
+   Returns a vector of {:input '...' :action '...'} maps.
+   Note: actionmaps should already be in Hickory format."
   [actionmaps]
-  (->> (h/as-hickory actionmaps)
+  (->> actionmaps  ; Already in Hickory format, no conversion needed
        (s/select (s/tag :action))
        (map (fn [action-node]
               (let [action-name (get-in action-node [:attrs :name])
@@ -151,7 +152,7 @@
   (when-let [svg-root (get-joystick-svg context instance-id)]
     (let [mappings (joystick-action-mappings actionmaps instance-id)
           selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
-      (update-svg-from-mappings (h/as-hickory svg-root) mappings
+      (update-svg-from-mappings svg-root mappings
                                 :selector-attr (keyword selector-attr)))))
 
 (defn update-all-svgs
@@ -189,7 +190,7 @@
                        ;; Apply mappings if we have an instance for this SVG
                        mapped-svg (if instance-id
                                     (let [mappings (joystick-action-mappings actionmaps instance-id)]
-                                      (update-svg-from-mappings (h/as-hickory svg-root) mappings
+                                      (update-svg-from-mappings svg-root mappings
                                                                 :selector-attr (keyword selector-attr)))
                                     svg-root)
                        ;; Inline images
@@ -460,10 +461,10 @@
   (clean-action-name "v_toggle_quantum_mode")
 
   ;; Extract all mappings for a joystick
-  (joystick-action-mappings (:actionmaps ctx) 2)
+  (joystick-action-mappings (:actionmaps ctx) 5)
 
   ;; Update single SVG in memory (no file I/O)
-  (update-svg-for-instance ctx 2)
+  (update-svg-for-instance ctx 5)
 
   ;; Update all SVGs in memory
   (def updated-svgs (update-all-svgs ctx))
