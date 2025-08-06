@@ -210,13 +210,15 @@
           mapping)))
 
 (defn find-svg-for-product
-  "Finds the SVG name for a given product string.
+  "Finds the SVG name for a given product string, case-insensitively.
    Returns the SVG name or nil if no match found."
   [product-string]
-  (let [mappings (get-product-svg-mapping)]
+  (let [lower-product (str/lower-case product-string)
+        mappings (get-product-svg-mapping)]
     (some (fn [[pattern svg-name]]
-            (when (re-find pattern product-string)
-              svg-name))
+            (let [lower-pattern (re-pattern (str "(?i)" (str pattern)))]
+              (when (re-find lower-pattern lower-product)
+                svg-name)))
           mappings)))
 
 ;; =============================================================================
@@ -302,4 +304,11 @@
 
   ;; Test product mapping
   (find-svg-for-product "VKB-Sim Gladiator")
+
+  (find-svg-for-product "VIRPIL Controls 20240617 L-VPC Stick MT-50CM2  {012F3344-0000-0000-0000-504944564944}")
+
+  (find-svg-for-product "RIGHT VPC Stick MT-50CM3  {83903344-0000-0000-0000-504944564944}")
+
+  (find-svg-for-product "VPC Throttle MT-50CM3  {01973344-0000-0000-0000-504944564944}")
+
   (get-product-svg-mapping))

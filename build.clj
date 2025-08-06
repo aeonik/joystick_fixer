@@ -8,6 +8,12 @@
 (def uber-file "target/controlmap-standalone.jar")
 (def basis (b/create-basis {:project "deps.edn"}))
 
+(defn create-windows-launcher []
+  (let [launcher-path "target/run-controlmap.bat"
+        contents "@echo off\r\njava -jar controlmap-standalone.jar\r\npause\r\n"]
+    (println "🚀 Creating Windows launcher...")
+    (spit launcher-path contents)))
+
 (defn clean [_]
   (println "🧼 Cleaning target...")
   (b/delete {:path "target"}))
@@ -49,6 +55,7 @@
            :uber-file uber-file
            :basis basis
            :main 'aeonik.controlmap.gui})
+  (create-windows-launcher)
 
   (println "✅ Build complete!")
   (println "   ├─ JAR:     " uber-file)

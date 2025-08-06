@@ -460,10 +460,10 @@
   (clean-action-name "v_toggle_quantum_mode")
 
   ;; Extract all mappings for a joystick
-  (joystick-action-mappings (:actionmaps ctx) 5)
+  (joystick-action-mappings (:actionmaps ctx) 2)
 
   ;; Update single SVG in memory (no file I/O)
-  (update-svg-for-instance ctx 4)
+  (update-svg-for-instance ctx 2)
 
   ;; Update all SVGs in memory
   (def updated-svgs (update-all-svgs ctx))

@@ -296,9 +296,12 @@
 ;; =============================================================================
 
 (defn hickory->svg-string
-  "Renders a Hickory tree to an SVG string"
+  "Renders a Hickory tree to an SVG string. If already Hickory, does not re-convert."
   [hickory-tree]
-  (render/hickory-to-html hickory-tree))
+  (render/hickory-to-html
+   (if (and (map? hickory-tree) (contains? hickory-tree :type))
+     hickory-tree
+     (h/as-hickory hickory-tree))))
 
 (defn hiccup->svg-string
   "Renders Hiccup format to an SVG string"
@@ -359,7 +362,7 @@
   ;; Load some test data
   (require '[aeonik.controlmap.state :as state])
   (def ctx @state/context)
-  (def tree (get-in ctx [:svg-roots :alpha_L]))
+  (def tree (get-in ctx [:svg-roots :alpha_R]))
 
   ;; Test EDN to SVG conversion
   (def edn-config (get-in ctx [:svg-edn-configs :alpha_L]))

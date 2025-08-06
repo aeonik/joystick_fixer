@@ -9,7 +9,8 @@
    [aeonik.controlmap.state :as state]
    [aeonik.controlmap.svg :as svg]
    [net.cgrand.enlive-html :as html]
-   [hickory.core :as h])
+   [hickory.core :as h]
+   [hickory.render :as render])
   (:import [javafx.scene.web WebEvent])
   (:gen-class))
 

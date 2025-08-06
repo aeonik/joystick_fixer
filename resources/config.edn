@@ -37,7 +37,9 @@
    "VPC Panel #1"             "panel_1"
    "VPC Panel #2"             "panel_2"
    "MongoosT-50CM3"           "vpc_mongoose_t50cm3"
-   "VPC Rudder Pedals"        "rudder_pedals"}
+   "VPC Rudder Pedals"        "rudder_pedals"
+   "RIGHT VPC Stick MT-50CM3" "alpha_R"
+   "VPC Throttle MT-50CM3"    "vpc_mongoose_t50cm3"}
 
   :action-name-cleaning
   {:remove-v-prefix true
