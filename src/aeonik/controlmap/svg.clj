@@ -358,7 +358,7 @@
     (if data-uri
       (-> image-node
           (assoc-in [:attrs :href] data-uri)
-          (assoc-in [:attrs :xlink:href] data-uri))
+          #_(assoc-in [:attrs :xlink:href] data-uri))
       (do
         (println (format "Warning: Could not inline image: %s" href))
         image-node))))
@@ -390,8 +390,8 @@
   "Renders Hiccup format to an SVG string"
   [hiccup]
   (-> hiccup
-      h/as-hickory
-      render/hickory-to-html))
+      hconvert/hiccup-to-hickory
+      hickory->svg-string))
 
 (defn create-data-url
   "Creates a data URL from content"
