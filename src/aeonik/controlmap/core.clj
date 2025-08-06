@@ -8,11 +8,8 @@
    [aeonik.controlmap.svg :as svg]
    [clojure.string :as str]
    [clojure.java.io :as io]
-   [hickory.core :as h]
    [hickory.render :as render]
-   [hickory.select :as s]
-   [hickory.zip :as hzip]
-   [clojure.zip :as zip]))
+   [hickory.select :as s]))
 
 ;; =============================================================================
 ;; Action Name Cleaning
@@ -163,12 +160,36 @@
       str))
 
 (defn update-svg-from-mappings
+  "Updates an SVG tree with action mappings.
+   Uses the svg/update-nodes function for clean updates."
+  [tree mappings & {:keys [format-fn additional-attrs selector-attr]
+                    :or {format-fn clean-action-name
+                         additional-attrs {}
+                         selector-attr :data-for}}]
+  (reduce (fn [current-tree mapping]
+            (let [svg-input (:svg-input mapping)
+                  action (:action mapping)]
+              (if (str/blank? svg-input)
+                current-tree
+                (svg/update-nodes current-tree
+                                  (s/attr selector-attr #(= % svg-input))
+                                  (svg/compose-edits
+                                   (svg/make-content-updater (format-fn action))
+                                   (svg/make-attr-updater
+                                    (merge {:data-action action}
+                                           additional-attrs)))
+                                  :first-only? true))))
+          tree
+          mappings))
+
+;; I want to clean this version up
+(defn update-svg-from-mappings
   "Updates an SVG tree with all actions for each :svg-input button."
   [tree mappings & {:keys [format-fn additional-attrs selector-attr separator]
                     :or   {format-fn clean-action-name
                            additional-attrs {}
                            selector-attr :data-for
-                           separator "<br>"}}]
+                           separator " <br> "}}]
   (let [actions-by-input (group-mappings-by-svg-input mappings)]
     (reduce-kv
      (fn [current-tree svg-input grouped-maps]
@@ -189,27 +210,6 @@
           :first-only? true)))
      tree
      actions-by-input)))
-
-(defn update-svg-roots
-  "Updates all SVG roots with mappings and inlined images.
-   Pure function - returns new svg-roots map."
-  [{:keys [svg-roots joystick-ids actionmaps config] :as context}]
-  (let [base-path (System/getProperty "user.dir")
-        short->id (build-joystick-lookup joystick-ids)
-        selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
-    (into {}
-          (map (fn [[svg-key svg-root]]
-                 (let [instance-id (get short->id svg-key)
-                       ;; Apply mappings if we have an instance for this SVG
-                       mapped-svg (if instance-id
-                                    (let [mappings (joystick-action-mappings actionmaps instance-id)]
-                                      (update-svg-from-mappings svg-root mappings
-                                                                :selector-attr (keyword selector-attr)))
-                                    svg-root)
-                       ;; Inline images
-                       final-svg (svg/fix-all-relative-images-base64 mapped-svg base-path)]
-                   [svg-key final-svg])))
-          svg-roots)))
 
 (defn render-svg
   "Renders a Hickory SVG tree to an HTML string"
@@ -249,6 +249,27 @@
 ;; =============================================================================
 ;; Context Management
 ;; =============================================================================
+
+(defn update-svg-roots
+  "Updates all SVG roots with mappings and inlined images.
+   Pure function - returns new svg-roots map."
+  [{:keys [svg-roots joystick-ids actionmaps config] :as context}]
+  (let [base-path (System/getProperty "user.dir")
+        short->id (build-joystick-lookup joystick-ids)
+        selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
+    (into {}
+          (map (fn [[svg-key svg-root]]
+                 (let [instance-id (get short->id svg-key)
+                       ;; Apply mappings if we have an instance for this SVG
+                       mapped-svg (if instance-id
+                                    (let [mappings (joystick-action-mappings actionmaps instance-id)]
+                                      (update-svg-from-mappings svg-root mappings
+                                                                :selector-attr (keyword selector-attr)))
+                                    svg-root)
+                       ;; Inline images
+                       final-svg (svg/fix-all-relative-images-base64 mapped-svg base-path)]
+                   [svg-key final-svg])))
+          svg-roots)))
 
 (defn update-context
   "Returns context with updated :svg-roots. Pure function."
@@ -500,7 +521,7 @@
   (print-status! ctx)
 
   ;; Get joystick info
-  (joystick-info ctx 5)
+  (joystick-info ctx 2)
 
   ;; Get summary
   (joystick-summary ctx)
@@ -518,6 +539,8 @@
   ;; Update single SVG in memory (no file I/O)
   (update-svg-for-instance ctx 5)
 
+  (update-svg-for-instance ctx 2)
+
   ;; Update all SVGs in memory
   (def updated-svgs (update-all-svgs ctx))
 
@@ -529,6 +552,7 @@
                         "v_quantum_activate_jump"]
                        {:format-fn clean-action-name
                         :separator "\n"})
+
   (update-svg-from-mappings svg mappings)
 
   ;; Generate single SVG file

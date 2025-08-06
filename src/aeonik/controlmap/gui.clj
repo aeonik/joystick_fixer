@@ -2,7 +2,6 @@
   "Interactive GUI for exploring mapped SVGs and unmapped actions"
   (:require
    [clojure.string :as str]
-   [clojure.java.io :as io]
    [cljfx.api :as fx]
    [cljfx.ext.web-view :as fx.ext.web-view]
    [aeonik.controlmap.core :as core]
@@ -57,6 +56,14 @@
   (str "data:text/html;base64,"
        (.encodeToString (java.util.Base64/getEncoder)
                         (.getBytes html-content "UTF-8"))))
+
+(defn short-name->display-name [context short-name]
+  (-> context
+      :joystick-ids
+      (as-> ids
+            (get ids (short-name (core/build-joystick-lookup ids))))
+      :match-regex
+      str))
 
 ;; =============================================================================
 ;; Global UI State
@@ -171,6 +178,7 @@
 
         {:fx/type :scroll-pane
          :v-box/vgrow :always
+         :fit-to-height true
          :fit-to-width true
          :content
          {:fx/type :list-view
@@ -213,7 +221,7 @@
    (mapv (fn [svg-name]
            (svg-tab {:svg-name svg-name
                      :svg-tree (get-in context [:svg-roots svg-name])
-                     :display-name (core/short-name->display-name context svg-name)}))
+                     :display-name (short-name->display-name context svg-name)}))
          svg-names)})
 
 (defn control-toolbar
