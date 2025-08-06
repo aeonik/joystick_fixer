@@ -189,7 +189,7 @@
                        ;; Apply mappings if we have an instance for this SVG
                        mapped-svg (if instance-id
                                     (let [mappings (joystick-action-mappings actionmaps instance-id)]
-                                      (update-svg-from-mappings svg-root mappings
+                                      (update-svg-from-mappings (h/as-hickory svg-root) mappings
                                                                 :selector-attr (keyword selector-attr)))
                                     svg-root)
                        ;; Inline images
