@@ -7,6 +7,7 @@
    [hickory.render :as render]
    [hickory.select :as s]
    [hickory.zip :as hzip]
+   [hickory.convert :as hconvert]
    [clojure.zip :as zip])
   (:import
    (java.util Base64)
@@ -141,6 +142,7 @@
              (vector? content-or-fn) content-or-fn
              :else [content-or-fn]))))
 
+;; TODO: Figure out how to get the tspan out of here, and use the functions below
 (defn make-content-updater
   "Creates an edit function that updates content. Supports multiline <tspan> if string contains newlines, <br>, or semicolons."
   [content-or-fn]
@@ -153,7 +155,7 @@
              (cond
                (vector? content) content
                (string? content)
-               (let [lines (str/split content #"\s*(?:<br>|;|\n)\s*")]
+               (let [lines (str/split content #"(?:\s*<br\s*/?>\s*|\s*;\s*|\s*\n\s*)")]
                  (map-indexed
                   (fn [idx line]
                     {:type :element
@@ -198,6 +200,68 @@
     (reduce (fn [n edit-fn] (edit-fn n))
             node
             edit-fns)))
+
+(defn make-tspan
+  "Creates a single tspan element in Hickory format"
+  [{:keys [text x y dx dy attrs]}]
+  {:type :element
+   :tag :tspan
+   :attrs (merge (cond-> {}
+                   x (assoc :x x)
+                   y (assoc :y y)
+                   dx (assoc :dx dx)
+                   dy (assoc :dy dy))
+                 attrs)
+   :content [(or text "")]})
+
+(defn actions-to-tspans
+  "Converts a vector of action strings into tspan elements.
+   First action can have a count prefix like [2] if multiple actions."
+  [actions & {:keys [x y line-height show-count?]
+              :or {line-height "1.2em"
+                   show-count? true}}]
+  (let [n (count actions)]
+    (cond
+      ;; No actions
+      (empty? actions) []
+
+      ;; Single action - return as simple text
+      (= 1 n) [(first actions)]
+
+      ;; Multiple actions - create tspans
+      :else
+      (map-indexed
+       (fn [idx action]
+         (let [text (if (and (zero? idx) show-count?)
+                      (str "[" n "] " action)
+                      action)]
+           (make-tspan {:text text
+                        :x x
+                        :dy (if (zero? idx) "0" line-height)})))
+       actions))))
+
+(defn make-multiline-content-updater
+  "Creates an edit function that updates content with multi-line support.
+   Can accept either a string with separators or a vector of strings."
+  [content-or-fn & {:keys [separator line-height]
+                    :or {separator #"(?:\n|<br/>?)"
+                         line-height "1.2em"}}]
+  (fn [node]
+    (let [content (cond
+                    (fn? content-or-fn) (content-or-fn node)
+                    :else content-or-fn)
+          x-attr (get-in node [:attrs :x])
+          y-attr (get-in node [:attrs :y])]
+      (assoc node :content
+             (cond
+               ;; Vector of strings - convert to tspans
+               (vector? content)
+               (actions-to-tspans content  ; <-- THIS IS THE KEY CALL
+                                  :x x-attr
+                                  :y y-attr
+                                  :line-height line-height)
+               ;; ... other cases
+               )))))
 
 ;; =============================================================================
 ;; Image Processing
@@ -294,7 +358,7 @@
     (if data-uri
       (-> image-node
           (assoc-in [:attrs :href] data-uri)
-          (assoc-in [:attrs :xlink:href] data-uri))
+          #_(assoc-in [:attrs :xlink:href] data-uri))
       (do
         (println (format "Warning: Could not inline image: %s" href))
         image-node))))
@@ -326,8 +390,8 @@
   "Renders Hiccup format to an SVG string"
   [hiccup]
   (-> hiccup
-      h/as-hickory
-      render/hickory-to-html))
+      hconvert/hiccup-to-hickory
+      hickory->svg-string))
 
 (defn create-data-url
   "Creates a data URL from content"
