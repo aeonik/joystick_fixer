@@ -4,156 +4,279 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [net.cgrand.enlive-html :as html]
-   [tupelo.parse.xml :as tx]
    [hickory.core :as h]
    [hickory.select :as s]))
 
-(defn load-actionmaps-legacy
-  "Loads actionmaps XML, first trying discovery, then falling back to resources"
-  []
-  (if-let [actionmaps-file (discovery/find-actionmaps)]
-    (do
-      (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
-      (with-open [reader (io/reader actionmaps-file)]
-        (tx/parse-streaming reader)))
-    (do
-      (println "No actionmaps found via discovery, using bundled resource")
-      (-> "actionmaps.xml"
-          io/resource
-          io/reader
-          tx/parse-streaming))))
+;; =============================================================================
+;; Loading Functions
+;; =============================================================================
 
 (defn load-actionmaps
-  "Loads actionmaps XML, first trying discovery, then falling back to resources"
+  "Loads actionmaps XML as Hickory data structure.
+   First tries discovery, then falls back to bundled resources.
+   Returns the parsed Hickory tree or throws an exception."
   []
-  (if-let [actionmaps-file (discovery/find-actionmaps)]
-    (do
-      (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
-      (with-open [reader (io/reader actionmaps-file)]
-        (h/parse (slurp reader))))
-    (do
-      (println "No actionmaps found via discovery, using bundled resource")
-      (-> "actionmaps.xml"
-          io/resource
-          io/reader
-          slurp
-          h/parse))))
+  (let [source (or (discovery/find-actionmaps)
+                   (io/resource "actionmaps.xml"))]
+    (if source
+      (let [path (if (instance? java.io.File source)
+                   (.getAbsolutePath source)
+                   (.toString source))]
+        (println "Loading actionmaps from:" path)
+        (-> source
+            io/reader
+            slurp
+            h/parse))
+      (throw (ex-info "No actionmaps found"
+                      {:searched-paths (discovery/get-search-paths)})))))
 
-(defn load-actionmaps
-  "Loads actionmaps XML, first trying discovery, then falling back to resources"
-  []
-  (if-let [actionmaps-file (discovery/find-actionmaps)]
-    (do
-      (println "Loading actionmaps from:" (.getAbsolutePath actionmaps-file))
-      (with-open [reader (io/reader actionmaps-file)]
-        (h/parse (slurp reader))))
-    (do
-      (println "No actionmaps found via discovery, using bundled resource")
-      (-> "actionmaps.xml"
-          io/resource
-          io/reader
-          slurp
-          h/parse))))
+(defn load-svg-resource
+  "Loads a single SVG resource. Returns [keyword hickory-tree] or nil."
+  [fname]
+  (try
+    (when-let [resource (io/resource (str "svg/" fname ".svg"))]
+      [(keyword fname)
+       (-> resource io/reader slurp h/parse)])
+    (catch Exception e
+      (println (format "Warning: Failed to load SVG '%s': %s"
+                       fname (.getMessage e)))
+      nil)))
 
 (defn load-svg-resources
   "Loads all SVG resources into memory.
-  Returns a map of keywordized short-names to Enlive trees:
-  {:alpha_L {:tag :svg, :attrs {...}, :content [...]}
-   :alpha_R {:tag :svg, :attrs {...}, :content [...]}}"
+   Returns a map of keywordized short-names to Hickory trees.
+   Continues on individual load failures."
   []
-  (let [svg-map (discovery/get-product-svg-mapping)]
-    (into {}
-          (keep (fn [[_ fname]]
-                  (if-let [resource (io/resource (str "svg/" fname ".svg"))]
-                    [(keyword fname) (-> resource io/reader slurp h/parse)]
-                    (do
-                      (println "Warning: SVG resource not found:" fname)
-                      nil)))
-                svg-map))))
+  (let [svg-map (discovery/get-product-svg-mapping)
+        loaded (keep (fn [[_ fname]] (load-svg-resource fname)) svg-map)
+        result (into {} loaded)]
+    (println (format "Loaded %d/%d SVG resources"
+                     (count result)
+                     (count svg-map)))
+    result))
 
-(defn edn-files->map
-  "Loads all EDN files in the given directory and returns a map of parsed data.
+(defn load-edn-file
+  "Loads a single EDN file. Returns [keyword data] or nil on error."
+  [file]
+  (try
+    (let [fname (.getName file)
+          key (keyword (str/replace fname #"\.edn$" ""))
+          data (edn/read-string (slurp file))]
+      [key data])
+    (catch Exception e
+      (println (format "Warning: Failed to load EDN file '%s': %s"
+                       (.getName file) (.getMessage e)))
+      nil)))
 
-  Returns:
-  {Keyword
-   {:text-coordinates
-    {Keyword
-     {:id String, :x float, :y float}
-     :button-rect-dimensions {:width float, :height float, :rx float, :ry float}}}}"
-  [dir]
-  (->> (file-seq (io/file dir))
-       (filter #(and (.isFile %)
-                     (str/ends-with? (.getName %) ".edn")))
-       (map (fn [f]
-              [(keyword (str/replace (.getName f) #"\.edn$" ""))
-               (edn/read-string (slurp f))]))
-       (into {})))
+(defn load-edn-configs
+  "Loads all EDN files from the given directory.
+   Returns a map of keyword -> parsed data.
+   Continues on individual file failures."
+  [dir-path]
+  (let [dir (io/file dir-path)]
+    (if (.exists dir)
+      (let [edn-files (->> (file-seq dir)
+                           (filter #(and (.isFile %)
+                                         (str/ends-with? (.getName %) ".edn"))))
+            loaded (keep load-edn-file edn-files)
+            result (into {} loaded)]
+        (println (format "Loaded %d EDN config files from %s"
+                         (count result) dir-path))
+        result)
+      (do
+        (println (format "Warning: EDN config directory not found: %s" dir-path))
+        {}))))
 
-(defn extract-joystick-instances [actionmaps]
-  (let [options (s/select (s/and (s/tag :options)
-                                 (s/attr :type #(= % "joystick"))
-                                 (s/attr :product #(not= % nil)))
-                          (h/as-hickory actionmaps))
+;; =============================================================================
+;; Extraction Functions
+;; =============================================================================
 
+(defn extract-joystick-instance
+  "Extracts joystick instance data from a single options node.
+   Returns [instance-id info-map] or nil."
+  [svg-mapping {:keys [attrs]}]
+  (let [instance (some-> (:instance attrs) parse-long)
+        product (:product attrs)]
+    (cond
+      (nil? instance)
+      (do
+        (println (format "⚠️ Skipping joystick with invalid instance: %s"
+                         product))
+        nil)
+
+      (nil? product)
+      (do
+        (println (format "⚠️ Skipping instance %d with no product info"
+                         instance))
+        nil)
+
+      :else
+      (let [match (some (fn [[regex name]]
+                          (when (re-find regex product)
+                            [regex name]))
+                        svg-mapping)]
+        (if match
+          (let [[regex short-name] match]
+            [instance {:product product
+                       :name product  ; Could be enhanced with better naming
+                       :short-name short-name
+                       :match-regex regex}])
+          (do
+            (println (format "⚠️ No SVG mapping for: %s (instance %d)"
+                             product instance))
+            [instance {:product product
+                       :name product
+                       :short-name nil
+                       :match-regex nil}]))))))
+
+(defn extract-joystick-instances
+  "Extracts all joystick instance configurations from actionmaps.
+   Returns a map of instance-id -> info."
+  [actionmaps]
+  (let [selector (s/and (s/tag :options)
+                        (s/attr :type #(= % "joystick"))
+                        (s/attr :product))
+        options (s/select selector (h/as-hickory actionmaps))
         svg-mapping (discovery/get-product-svg-mapping)]
-    (into {}
-          (keep (fn [{:keys [attrs]}]
-                  (let [instance (some-> (:instance attrs) parse-long)
-                        product  (:product attrs)
-                        match    (some (fn [[regex name]]
-                                         (when (re-find regex product)
-                                           [regex name]))
-                                       svg-mapping)]
-                    (cond
-                      (nil? instance)
-                      (do
-                        (println "⚠️ Warning: Skipping joystick with missing or invalid instance ID. Product:" product)
-                        nil)
+    (->> options
+         (keep (partial extract-joystick-instance svg-mapping))
+         (into {}))))
 
-                      (nil? match)
-                      (do
-                        (println "⚠️ Warning: No SVG mapping found for joystick product:" product)
-                        [instance {:product product
-                                   :short-name nil
-                                   :match-regex nil}])
-
-                      :else
-                      (let [[regex short-name] match]
-                        [instance {:product product
-                                   :short-name short-name
-                                   :match-regex regex}])))))
-          options)))
-
-(def actionmaps (load-actionmaps))
-
-(def svg-roots (load-svg-resources))
-
-(def svg-edn-files->map (edn-files->map "resources/config/svg/"))
-
-(def joystick-ids (extract-joystick-instances actionmaps))
+;; =============================================================================
+;; Display Helpers
+;; =============================================================================
 
 (defn get-display-name
-  "Useful for the gui"
-  [^java.io.File f]
-  (let [filename (.getName f)
+  "Gets a human-readable display name for a file.
+   Useful for GUI applications."
+  [file joystick-ids]
+  (let [filename (if (instance? java.io.File file)
+                   (.getName file)
+                   (str file))
         short-name (-> filename
                        (str/replace #"^updated_" "")
-                       (str/replace #"\.svg$" ""))
-        joystick-entry (->> joystick-ids
-                            vals
-                            (filter #(= (:short-name %) short-name))
-                            first)]
-    (if joystick-entry
-      (str (:match-regex joystick-entry))
+                       (str/replace #"\.svg$" ""))]
+    (if-let [joystick (some (fn [[_ info]]
+                              (when (= (:short-name info) short-name)
+                                info))
+                            joystick-ids)]
+      (or (:name joystick)
+          (str (:match-regex joystick))
+          short-name)
       short-name)))
 
-(defn build-job-context []
-  {:joystick-ids joystick-ids
-   :svg-roots svg-roots ;; legacy, still useful for debug
-   :svg-config (-> discovery/config :mapping :svg-generation)
-   :svg-edn-files svg-edn-files->map ;; new preferred EDN representation
-   :config discovery/config
-   :actionmaps actionmaps})
+;; =============================================================================
+;; Context Management
+;; =============================================================================
 
-(def context (build-job-context))
+(defn build-context
+  "Builds a complete context map with all necessary data.
+   This is the main entry point for initializing the system.
+
+   Options:
+   - :skip-svgs - Don't load SVG resources (for faster testing)
+   - :skip-edn - Don't load EDN configs
+   - :actionmaps - Pre-loaded actionmaps (avoids re-loading)"
+  [& {:keys [skip-svgs skip-edn actionmaps]}]
+  (println "\n══════════════════════════════════════")
+  (println "   Initializing ControlMap Context")
+  (println "══════════════════════════════════════\n")
+
+  (let [start-time (System/currentTimeMillis)
+
+        ;; Load actionmaps
+        _ (println "▶ Loading actionmaps...")
+        actionmaps (or actionmaps (load-actionmaps))
+
+        ;; Extract joystick instances
+        _ (println "▶ Extracting joystick instances...")
+        joystick-ids (extract-joystick-instances actionmaps)
+        _ (println (format "  Found %d joystick instances" (count joystick-ids)))
+
+        ;; Load SVG resources
+        _ (println "▶ Loading SVG resources...")
+        svg-roots (if skip-svgs
+                    (do (println "  Skipped (skip-svgs flag)") {})
+                    (load-svg-resources))
+
+        ;; Load EDN configs
+        _ (println "▶ Loading EDN configurations...")
+        edn-configs (if skip-edn
+                      (do (println "  Skipped (skip-edn flag)") {})
+                      (load-edn-configs "resources/config/svg/"))
+
+        ;; Get config
+        config (discovery/get-config)
+
+        elapsed (- (System/currentTimeMillis) start-time)]
+
+    (println (format "\n✓ Context initialized in %.2f seconds"
+                     (/ elapsed 1000.0)))
+    (println "══════════════════════════════════════\n")
+
+    {:actionmaps actionmaps
+     :joystick-ids joystick-ids
+     :svg-roots svg-roots
+     :svg-config (-> config :mapping :svg-generation)
+     :svg-edn-configs edn-configs
+     :config config
+     :initialized-at (java.util.Date.)}))
+
+;; =============================================================================
+;; State Atom (Optional - for REPL/development)
+;; =============================================================================
+
+(defonce ^:dynamic *context* (atom nil))
+
+(defn init!
+  "Initialize the global context atom. Useful for REPL development.
+   Returns the initialized context."
+  [& opts]
+  (let [ctx (apply build-context opts)]
+    (reset! *context* ctx)
+    ctx))
+
+(defn get-context
+  "Get the current context, initializing if needed."
+  []
+  (or @*context* (init!)))
+
+;; =============================================================================
+;; Lazy Initialization (for production use)
+;; =============================================================================
+
+(def context
+  "Lazy-initialized context. Will be computed on first access."
+  (delay (build-context)))
+
+(defn ensure-initialized
+  "Ensures context is initialized. Forces the delay if needed."
+  []
+  (force context))
+
+;; =============================================================================
+;; Development Helpers
+;; =============================================================================
+
+(comment
+  ;; Initialize with all data
+  (init!)
+
+  ;; Initialize quickly for testing (skip SVGs)
+  (init! :skip-svgs true)
+
+  ;; Get current context
+  (get-context)
+
+  ;; Build a fresh context without storing it
+  (build-context)
+
+  ;; Access lazy context
+  @context
+
+  ;; Check what's loaded
+  (keys (:svg-roots @*context*))
+  (keys (:joystick-ids @*context*))
+
+  ;; Test display name
+  (get-display-name "updated_alpha_L.svg" (:joystick-ids @*context*)))

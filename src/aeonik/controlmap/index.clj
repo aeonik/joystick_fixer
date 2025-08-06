@@ -1,183 +1,203 @@
 (ns aeonik.controlmap.index
+  "HTML and index generation for mapped SVGs"
   (:require
-   [clojure.java.io :as io]
-   [clojure.string :as str]
-   [clojure.edn :as edn]
-   [aeonik.controlmap.discovery :as disocvery]
-   [net.cgrand.enlive-html :as html]
    [aeonik.controlmap.discovery :as discovery]
-   [aeonik.controlmap.state :as state]))
+   [aeonik.controlmap.state :as state]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn]
+   [clojure.string :as str]
+   [net.cgrand.enlive-html :as html]))
 
 ;; =============================================================================
-;; Configuration Loading
+;; Configuration Management
 ;; =============================================================================
 
-(def ^:private config
-  "Application configuration loaded from config.edn"
-  (-> "config.edn"
-      io/resource
-      slurp
-      edn/read-string))
+(defn get-config
+  "Loads the application configuration from config.edn (via discovery)."
+  []
+  (discovery/get-config))
+
+(defn get-svg-config
+  "Gets the SVG generation config from the global config."
+  []
+  (-> (get-config) :mapping :svg-generation))
 
 ;; =============================================================================
-;; CSS Management
+;; Resource Management (CSS, Output)
 ;; =============================================================================
+
+(defn copy-resource!
+  "Copies a resource from the jar/resources to a target path.
+   Returns the output file path or nil if missing."
+  [resource out-path]
+  (if-let [res (io/resource resource)]
+    (do
+      (io/make-parents out-path)
+      (with-open [in (io/input-stream res)
+                  out (io/output-stream out-path)]
+        (io/copy in out))
+      (println "Copied resource:" out-path)
+      out-path)
+    (do
+      (println (format "Warning: Resource %s not found" resource))
+      nil)))
+
 (defn copy-css-to-output!
-  "Copies CSS file from resources to output directory"
+  "Copies the default styles.css from resources to the output dir."
   [output-dir]
-  (let [css-resource (io/resource "styles.css")
-        css-path (str output-dir "/styles.css")]
-    (if css-resource
-      (do
-        (io/make-parents css-path)
-        (io/copy (io/input-stream css-resource) (io/file css-path))
-        (println "Copied CSS file to:" css-path)
-        css-path)
-      (do
-        (println "Warning: styles.css not found in resources")
-        nil))))
+  (copy-resource! "styles.css" (str (io/file output-dir "styles.css"))))
 
 ;; =============================================================================
-;; Joystick Information & Mapping
+;; Joystick Instance Metadata & Mapping Info
 ;; =============================================================================
 
-;; TODO: Use state/context for this, don't hard code this here, see state/joystick-ids
-(defn get-joystick-display-info
-  "Returns display information for joysticks based on their SVG filenames"
+(defn get-context
+  "Gets the project context, initializing if needed."
   []
-  {"alpha_L"              {:title "Alpha L" :description "Left Alpha joystick mappings"}
-   "alpha_R"              {:title "Alpha R" :description "Right Alpha joystick mappings"}
-   "panel_1"              {:title "Panel 1" :description "Panel 1 mappings"}
-   "panel_2"              {:title "Panel 2" :description "Panel 2 mappings"}
-   "panel_3"              {:title "Panel 3" :description "SharKa‑50 panel mappings"}
-   "vpc_mongoose_t50cm3"  {:title "VPC Mongoose T50CM3" :description "Mongoose joystick mappings"}})
+  (state/get-context))
 
-(defn get-generated-svg-info
-  "Returns information about generated SVGs based on instance mapping and config"
+(defn joystick-instance-info
+  "Returns a sequence of info maps for each detected joystick (for index/table output)."
   []
-  (let [instance-mapping state/joystick-ids
-        svg-config (get-in config [:mapping :svg-generation])
-        output-dir (:default-output-dir svg-config)
+  (let [ctx           (get-context)
+        {:keys [joystick-ids config]} ctx
+        svg-config    (-> config :mapping :svg-generation)
+        output-dir    (:default-output-dir svg-config)
         filename-prefix (:filename-prefix svg-config)
-        display-info (get-joystick-display-info)]
-    (->> instance-mapping
-         (map (fn [[instance svg-path]]
-                (let [filename (:short-name svg-path)
-                      generated-filename (str filename-prefix filename ".svg")
-                      generated-path (str output-dir "/" generated-filename)
-                      info (get display-info filename {:title (str "Instance " instance)
-                                                       :description "Unknown device"})]
-                  {:instance instance
-                   :title (:title info)
-                   :description (:description info)
-                   :svg-path generated-path
-                   :filename generated-filename})))
-         (sort-by :instance))))
+        display-names (fn [short-name instance-id]
+                        {:title (str (str/capitalize (str/replace (str short-name) #"_" " ")))
+                         :description (or (get-in joystick-ids [instance-id :product])
+                                          "Unknown device")})]
+    (->> joystick-ids
+         (map (fn [[instance-id joy]]
+                (let [short-name (:short-name joy)
+                      fname      (str filename-prefix short-name ".svg")
+                      path       (str output-dir "/" fname)
+                      disp-info  (display-names short-name instance-id)]
+                  {:instance-id instance-id
+                   :short-name  short-name
+                   :svg-path    path
+                   :filename    fname
+                   :title       (:title disp-info)
+                   :description (:description disp-info)})))
+         (filter :short-name)
+         (sort-by :instance-id)
+         vec)))
 
 ;; =============================================================================
-;; HTML Template with Enlive
+;; HTML Generation (Enlive)
 ;; =============================================================================
 
-(defn create-base-template
-  "Creates the base HTML structure"
+(defn create-base-html
+  "Creates the basic HTML skeleton as data structure."
   []
   (html/html
    [:html {:lang "en"}
     [:head
      [:meta {:charset "UTF-8"}]
      [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-     [:title "Updated SVG Joystick Mappings – Layout"]
+     [:title "Star Citizen Joystick SVG Layouts"]
      [:link {:rel "stylesheet" :href "styles.css"}]]
     [:body
-     [:h1 "Updated SVG Joystick Mappings"]
+     [:h1 "Star Citizen Joystick SVG Layouts"]
      [:div.svg-grid]]]))
 
-(defn generate-html-structure
-  "Generates the complete HTML structure with all detected joysticks"
+(defn joystick-svg-html-block
+  "Returns an Enlive HTML node for a single joystick's SVG output."
+  [{:keys [instance-id title description filename svg-path]}]
+  {:tag :div
+   :attrs {:class "svg-item"}
+   :content
+   [{:tag :h3
+     :content [(format "%s (Instance %d)" title instance-id)]}
+    {:tag :div
+     :attrs {:class "instance-info"}
+     :content [description]}
+    {:tag :div
+     :attrs {:class "svg-container"}
+     :content [{:tag :object
+                :attrs {:data filename :type "image/svg+xml"}
+                :content [{:tag :p :content [(str "SVG not found: " filename)]}]}]}]})
+
+(defn build-index-html-structure
+  "Expands the HTML document with all joystick SVG blocks."
   []
-  (let [svg-items (get-generated-svg-info)
-        base (create-base-template)]
+  (let [joystick-items (joystick-instance-info)
+        base (create-base-html)]
     (html/at base
              [:.svg-grid]
-             (html/content
-              (map (fn [{:keys [instance title description filename]}]
-                     {:tag :div, :attrs {:class "svg-item"}
-                      :content
-                      [{:tag :h3, :content [(str title " (Instance " instance ")")]}
-                       {:tag :div, :attrs {:class "instance-info"}, :content [description]}
-                       {:tag :div, :attrs {:class "svg-container"}
-                        :content
-                        [{:tag :object, :attrs {:data filename, :type "image/svg+xml"}
-                          :content
-                          [{:tag :p, :content [(str "SVG not found: " filename)]}]}]}]})
-                   svg-items)))))
+             (html/content (map joystick-svg-html-block joystick-items)))))
+
+(defn make-index-html-string
+  "Renders the HTML structure to a HTML string."
+  []
+  (let [doc (build-index-html-structure)]
+    (str "<!doctype html>\n" (apply str (html/emit* doc)))))
+
 ;; =============================================================================
-;; File Generation
+;; Output/Filesystem Integration
 ;; =============================================================================
 
 (defn generate-index-html!
-  "Generates the index.html file with all joystick mappings"
+  "Writes the index.html (with joystick SVG blocks) to disk.
+   Optionally specify the path (default: out/index.html).
+   Returns output path."
   ([] (generate-index-html! "out/index.html"))
   ([output-path]
    (let [output-file (io/file output-path)
-         output-dir (or (.getParent output-file) ".")  ; Default to current directory
-         _ (copy-css-to-output! output-dir)  ; Copy CSS from resources
-         html-structure (generate-html-structure)
-         html-string (str "<!doctype html>\n" (apply str (html/emit* html-structure)))]
-     (io/make-parents output-path)
-     (spit output-path html-string)
+         output-dir (.getParent output-file)
+         _ (copy-css-to-output! output-dir)
+         html-content (make-index-html-string)]
+     (io/make-parents output-file)
+     (spit output-file html-content)
      (println "Generated HTML index:" output-path)
      output-path)))
 
 (defn generate-index-with-output-dir!
-  "Generates index.html in the same directory as the SVG outputs"
+  "Generates index.html in the SVG output directory as determined from config."
   []
-  (let [output-dir (get-in config [:mapping :svg-generation :default-output-dir])
-        index-path (str output-dir "/index.html")]
-    (generate-index-html! index-path)))
+  (let [svg-config   (get-svg-config)
+        output-dir   (:default-output-dir svg-config)
+        output-path  (str (io/file output-dir "index.html"))]
+    (generate-index-html! output-path)))
 
 ;; =============================================================================
-;; Integration Helpers
+;; SVG Output Status & Verification Helpers
 ;; =============================================================================
 
 (defn check-svg-files-exist
-  "Checks which generated SVG files actually exist on disk"
+  "Scans expected output SVGs and marks existence."
   []
-  (let [svg-info (get-generated-svg-info)]
+  (let [joysticks (joystick-instance-info)]
     (map (fn [info]
            (assoc info :exists? (.exists (io/file (:svg-path info)))))
-         svg-info)))
+         joysticks)))
 
 (defn print-svg-status!
-  "Prints status of all expected SVG files"
+  "Prints a table of which SVG files are present or missing."
   []
-  (let [svg-status (check-svg-files-exist)]
+  (let [items (check-svg-files-exist)]
     (println "\n=== SVG File Status ===")
-    (doseq [{:keys [instance title svg-path exists?]} svg-status]
+    (doseq [{:keys [instance-id title svg-path exists?]} items]
       (println (format "Instance %d (%s): %s %s"
-                       instance title svg-path
+                       instance-id title svg-path
                        (if exists? "✓ EXISTS" "✗ MISSING"))))
     (println "=====================\n")))
 
 ;; =============================================================================
-;; Development Helpers
+;; Development Helpers / Comments
 ;; =============================================================================
 
 (comment
-  ;; Generate the HTML index
+  ;; Generate index.html to default or any output
   (generate-index-html!)
-
-  ;; Generate in output directory
   (generate-index-with-output-dir!)
 
-  ;; Check SVG file status
+  ;; Check which files are present
   (print-svg-status!)
 
-  ;; Preview the generated structure
-  (get-generated-svg-info)
+  ;; Preview the HTML (as string, not written)
+  (subs (make-index-html-string) 0 400)
 
-  ;; Check what the HTML looks like
-  (-> (generate-html-structure)
-      html/emit*
-      (->> (apply str))
-      (subs 0 500)))
+  ;; See the joystick mapping info
+  (joystick-instance-info))
