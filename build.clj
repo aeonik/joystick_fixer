@@ -14,6 +14,14 @@
     (println "🚀 Creating Windows launcher...")
     (spit launcher-path contents)))
 
+(defn zip-artifacts [_]
+  (let [zip-file "target/control_mapper.zip"
+        target-dir (io/file "target")]
+    (println "📦 Zipping target/* into" zip-file "...")
+    (b/zip {:src-dirs [(.getPath target-dir)]
+            :zip-file zip-file})
+    (println "✅ Zip complete! └─" zip-file)))
+
 (defn clean [_]
   (println "🧼 Cleaning target...")
   (b/delete {:path "target"}))
@@ -56,7 +64,9 @@
            :basis basis
            :main 'aeonik.controlmap.gui})
   (create-windows-launcher)
+  (zip-artifacts nil)
 
   (println "✅ Build complete!")
   (println "   ├─ JAR:     " uber-file)
-  (println "   └─ Assets:  target/resources/"))
+  (println "   ├─ Assets:  target/resources/")
+  (println "   └─ Zip:     control_mapper.zip"))
