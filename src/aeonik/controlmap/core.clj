@@ -106,28 +106,110 @@
 ;; SVG Update Functions
 ;; =============================================================================
 
+(defn group-mappings-by-svg-input
+  "Groups mappings by :svg-input (button) value."
+  [mappings]
+  (->> mappings
+       (group-by :svg-input)
+       (remove (comp str/blank? key))
+       (into {})))
+
+(defn format-multi-action
+  "formats all actions assigned to a button for svg display."
+  [actions {:keys [format-fn separator max-actions]}]
+  (let [format-fn (or format-fn identity)
+        separator (or separator " / ")
+        display-actions (map format-fn actions)
+        n (count actions)]
+    (cond
+      (> n (or max-actions 8))
+      (str (str/join separator (take (max-actions 8) display-actions)) " ...")
+      (> n 1)
+      (str (str/join separator display-actions))
+      (= n 1)
+      (first display-actions)
+      :else "")))
+
+(defn find-multi-bound-buttons
+  [mappings]
+  (->> (group-mappings-by-svg-input mappings)
+       (filter (fn [[svg-input acts]] (> (count acts) 1)))
+       (into {})))
+
+(defn analyze-button-usage
+  "Returns a map of {svg-input {:count n :actions [...]}}"
+  [mappings]
+  (->> mappings
+       group-mappings-by-svg-input
+       (map (fn [[svg-input acts]] [svg-input {:count (count acts)
+                                               :actions (map :action acts)}]))
+       (into {})))
+
+(defn build-joystick-lookup
+  "Creates a map of svg-key -> instance-id for reverse lookups"
+  [joystick-ids]
+  (into {}
+        (keep (fn [[id {:keys [short-name]}]]
+                (when short-name
+                  [(keyword short-name) id])))
+        joystick-ids))
+
+(defn short-name->display-name [context short-name]
+  (-> context
+      :joystick-ids
+      (as-> ids
+            (get ids (short-name (build-joystick-lookup ids))))
+      :match-regex
+      str))
+
 (defn update-svg-from-mappings
-  "Updates an SVG tree with action mappings.
-   Uses the svg/update-nodes function for clean updates."
-  [tree mappings & {:keys [format-fn additional-attrs selector-attr]
-                    :or {format-fn clean-action-name
-                         additional-attrs {}
-                         selector-attr :data-for}}]
-  (reduce (fn [current-tree mapping]
-            (let [svg-input (:svg-input mapping)
-                  action (:action mapping)]
-              (if (str/blank? svg-input)
-                current-tree
-                (svg/update-nodes current-tree
-                                  (s/attr selector-attr #(= % svg-input))
-                                  (svg/compose-edits
-                                   (svg/make-content-updater (format-fn action))
-                                   (svg/make-attr-updater
-                                    (merge {:data-action action}
-                                           additional-attrs)))
-                                  :first-only? true))))
-          tree
-          mappings))
+  "Updates an SVG tree with all actions for each :svg-input button."
+  [tree mappings & {:keys [format-fn additional-attrs selector-attr separator]
+                    :or   {format-fn clean-action-name
+                           additional-attrs {}
+                           selector-attr :data-for
+                           separator "<br>"}}]
+  (let [actions-by-input (group-mappings-by-svg-input mappings)]
+    (reduce-kv
+     (fn [current-tree svg-input grouped-maps]
+       (let [actions   (map :action grouped-maps)
+             action-str (format-multi-action actions {:format-fn format-fn :separator separator})
+             data-action (str/join ";" actions)]
+         (svg/update-nodes
+          current-tree
+          (s/attr selector-attr #(= % svg-input))
+          (svg/compose-edits
+           (svg/make-content-updater action-str)
+           (svg/make-attr-updater (merge
+                                   {:data-action data-action
+                                    :data-action-count (str (count actions))
+                                    ;; (optionally add more metadata)
+                                    }
+                                   additional-attrs)))
+          :first-only? true)))
+     tree
+     actions-by-input)))
+
+(defn update-svg-roots
+  "Updates all SVG roots with mappings and inlined images.
+   Pure function - returns new svg-roots map."
+  [{:keys [svg-roots joystick-ids actionmaps config] :as context}]
+  (let [base-path (System/getProperty "user.dir")
+        short->id (build-joystick-lookup joystick-ids)
+        selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
+    (into {}
+          (map (fn [[svg-key svg-root]]
+                 (let [instance-id (get short->id svg-key)
+                       ;; Apply mappings if we have an instance for this SVG
+                       mapped-svg (if instance-id
+                                    (let [mappings (joystick-action-mappings actionmaps instance-id)]
+                                      (update-svg-from-mappings svg-root mappings
+                                                                :selector-attr (keyword selector-attr)))
+                                    svg-root)
+                       ;; Inline images
+                       final-svg (svg/fix-all-relative-images-base64 mapped-svg base-path)]
+                   [svg-key final-svg])))
+          svg-roots)))
 
 (defn render-svg
   "Renders a Hickory SVG tree to an HTML string"
@@ -167,44 +249,6 @@
 ;; =============================================================================
 ;; Context Management
 ;; =============================================================================
-
-(defn build-joystick-lookup
-  "Creates a map of svg-key -> instance-id for reverse lookups"
-  [joystick-ids]
-  (into {}
-        (keep (fn [[id {:keys [short-name]}]]
-                (when short-name
-                  [(keyword short-name) id])))
-        joystick-ids))
-
-(defn short-name->display-name [context short-name]
-  (-> context
-      :joystick-ids
-      (as-> ids
-            (get ids (short-name (build-joystick-lookup ids))))
-      :match-regex
-      str))
-
-(defn update-svg-roots
-  "Updates all SVG roots with mappings and inlined images.
-   Pure function - returns new svg-roots map."
-  [{:keys [svg-roots joystick-ids actionmaps config] :as context}]
-  (let [base-path (System/getProperty "user.dir")
-        short->id (build-joystick-lookup joystick-ids)
-        selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
-    (into {}
-          (map (fn [[svg-key svg-root]]
-                 (let [instance-id (get short->id svg-key)
-                       ;; Apply mappings if we have an instance for this SVG
-                       mapped-svg (if instance-id
-                                    (let [mappings (joystick-action-mappings actionmaps instance-id)]
-                                      (update-svg-from-mappings svg-root mappings
-                                                                :selector-attr (keyword selector-attr)))
-                                    svg-root)
-                       ;; Inline images
-                       final-svg (svg/fix-all-relative-images-base64 mapped-svg base-path)]
-                   [svg-key final-svg])))
-          svg-roots)))
 
 (defn update-context
   "Returns context with updated :svg-roots. Pure function."
@@ -477,11 +521,25 @@
   ;; Update all SVGs in memory
   (def updated-svgs (update-all-svgs ctx))
 
+  (def svg (get-joystick-svg ctx 1))
+  (def mappings (joystick-action-mappings (:actionmaps ctx) 1))
+
+  (format-multi-action ["v_toggle_mining_laser_fire"
+                        "v_weapon_preset_attack"
+                        "v_quantum_activate_jump"]
+                       {:format-fn clean-action-name
+                        :separator "\n"})
+  (update-svg-from-mappings svg mappings)
+
   ;; Generate single SVG file
   (generate-svg-for-instance! ctx 5 "/tmp")
 
   ;; Generate all SVG files
   (generate-all-svgs! ctx "/tmp")
+
+  (find-multi-bound-buttons (joystick-action-mappings (:actionmaps ctx) 1))
+
+  (analyze-button-usage (joystick-action-mappings (:actionmaps ctx) 1))
 
   ;; Full test run
   (do

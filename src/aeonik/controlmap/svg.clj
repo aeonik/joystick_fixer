@@ -141,6 +141,28 @@
              (vector? content-or-fn) content-or-fn
              :else [content-or-fn]))))
 
+(defn make-content-updater
+  "Creates an edit function that updates content. Supports multiline <tspan> if string contains newlines, <br>, or semicolons."
+  [content-or-fn]
+  (fn [node]
+    (let [x-val (get-in node [:attrs :x])
+          content (cond
+                    (fn? content-or-fn) (content-or-fn node)
+                    :else content-or-fn)]
+      (assoc node :content
+             (cond
+               (vector? content) content
+               (string? content)
+               (let [lines (str/split content #"\s*(?:<br>|;|\n)\s*")]
+                 (map-indexed
+                  (fn [idx line]
+                    {:type :element
+                     :tag :tspan
+                     :attrs {:x x-val :dy (str (* idx 1.2) "em")}
+                     :content [line]})
+                  lines))
+               :else [content])))))
+
 (defn make-attr-updater
   "Creates an edit function that updates attributes"
   [attr-map]
