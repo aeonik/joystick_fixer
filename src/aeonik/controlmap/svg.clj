@@ -4,6 +4,10 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [net.cgrand.enlive-html :as html]
+            [hickory.core :as h]
+            [hickory.select :as s]
+            [hickory.zip :as hzip]
+            [clojure.zip :as zip]
             [riveted.core :as vtd])
   (:import (java.util Base64)
            (java.nio.file Files)))
@@ -53,7 +57,133 @@
 (def hiccup-svg
   (coordinates->svg-hiccup (first state/svg-edn-files->map)))
 
-(map (comp vtd/navigator #(apply str %) html/emit* rest) (-> state/context :svg-roots))
+;; Helper functions for Hickory
+(defn update-nodes
+  "Updates all nodes in a tree that match the given selector.
+
+   Args:
+   - tree: Hickory tree to modify
+   - selector: Hickory selector function (e.g., (s/attr :data-for #(= % \"button1\")))
+   - edit-fn: Function that takes a node and returns modified node
+
+   Options:
+   - :first-only? - If true, only update first match (default false)
+   - :return-locs? - If true, return [modified-tree matched-locs] (default false)
+
+   Returns modified tree (or [tree locs] if :return-locs? is true)"
+  [tree selector edit-fn & {:keys [first-only? return-locs?]
+                            :or {first-only? false
+                                 return-locs? false}}]
+  (let [matched-locs (atom [])]
+    (loop [current-tree tree]
+      (let [root-loc (hzip/hickory-zip current-tree)
+            found-loc (s/select-next-loc selector root-loc)]
+        (if found-loc
+          (do
+            (when return-locs?
+              (swap! matched-locs conj (zip/node found-loc)))
+            (let [updated-tree (-> found-loc
+                                   (zip/edit edit-fn)
+                                   zip/root)]
+              (if first-only?
+                (if return-locs?
+                  [updated-tree @matched-locs]
+                  updated-tree)
+                (recur updated-tree))))
+          (if return-locs?
+            [current-tree @matched-locs]
+            current-tree))))))
+
+;; Even more flexible version with multiple selectors/edit-fns
+(defn update-nodes-batch
+  "Apply multiple selector->edit-fn pairs to a tree.
+
+   Args:
+   - tree: Hickory tree to modify
+   - updates: Vector of [selector edit-fn] pairs or [selector edit-fn options-map] triples
+
+   Returns modified tree"
+  [tree updates]
+  (reduce (fn [current-tree update-spec]
+            (let [[selector edit-fn opts] (if (= 3 (count update-spec))
+                                            update-spec
+                                            [(first update-spec) (second update-spec) {}])]
+              (update-nodes current-tree selector edit-fn opts)))
+          tree
+          updates))
+
+;; Helper function to create common edit functions
+(defn make-content-updater
+  "Creates an edit function that updates content"
+  [content-or-fn]
+  (fn [node]
+    (assoc node :content
+           (if (fn? content-or-fn)
+             [(content-or-fn node)]
+             [content-or-fn]))))
+
+(defn make-attr-updater
+  "Creates an edit function that updates attributes"
+  [attr-map]
+  (fn [node]
+    (update node :attrs merge attr-map)))
+
+(defn make-class-adder
+  "Creates an edit function that adds CSS classes"
+  [classes]
+  (fn [node]
+    (update-in node [:attrs :class]
+               #(str % " " classes))))
+
+;; Compose multiple edit functions
+(defn compose-edits
+  "Chains multiple edit functions together"
+  [& edit-fns]
+  (fn [node]
+    (reduce (fn [n edit-fn] (edit-fn n))
+            node
+            edit-fns)))
+
+(comment
+  ;; Usage examples:
+  ;; Update all buttons to show "Click me"
+  (update-nodes tree
+                (s/tag :button)
+                (make-content-updater "Click me"))
+
+  ;; Add a class to all elements with data-for attribute
+  (update-nodes tree
+                (s/attr :data-for)
+                (make-class-adder "has-data-for"))
+
+  ;; Complex update with custom function
+  (update-nodes tree
+                (s/and (s/tag :text)
+                       (s/attr :data-row))
+                (fn [node]
+                  (let [row (get-in node [:attrs :data-row])]
+                    (-> node
+                        (assoc :content [(str "Row " row)])
+                        (assoc-in [:attrs :data-modified] "true")))))
+
+  ;; Batch updates with different selectors
+  (update-nodes-batch tree
+                      [[(s/attr :data-for "button1")
+                        (make-content-updater "Emergency Exit")]
+                       [(s/attr :data-for "button2")
+                        (make-content-updater "Turret Mode")]
+                       [(s/class "inactive")
+                        (make-class-adder "dimmed")
+                        {:first-only? false}]]) ; Update all inactive elements
+
+  ;; Get back the nodes that were modified
+  (let [[modified-tree matched-nodes]
+        (update-nodes tree
+                      (s/attr :data-action)
+                      (make-class-adder "has-action")
+                      :return-locs? true)]
+    (println "Modified" (count matched-nodes) "nodes")
+    modified-tree))
 
 (defn svg-roots->navigator-map
   "No api in riveted for modification, so this isn't useful"

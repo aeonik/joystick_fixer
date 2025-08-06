@@ -11,6 +11,8 @@
    [net.cgrand.enlive-html :as html]
    [hickory.select :as s]
    [hickory.core :as h]
+   [hickory.zip :as hzip]
+   [clojure.zip :as zip]
    [tupelo.forest :as f]))
 
 ;; =============================================================================
@@ -67,102 +69,55 @@
 
 (comment (extract-input-action-mappings (state/load-actionmaps)))
 
-(defn find-joystick-bindings
-  "Returns enlive structures containing all action maps for a specific joystick"
-  [actionmaps js-num]
-  (let [prefix (str "js" js-num "_")]
-    (f/with-forest (f/new-forest)
-      (map f/bush->enlive
-           (-> actionmaps
-               (f/add-tree-enlive)
-               (f/find-paths-with [:** {:input :*}]
-                                  #(str/starts-with? (f/hid->attr (last %) :input) prefix))
-               (f/format-paths))))))
-
-(defn find-joystick-bindings-hickory*
+(defn find-joystick-bindings*
+  "Given a sequence of action mappings (`input-actions*`), filter to only those with an input
+   binding for a specific joystick number (`js-num`). Adds an extra `:svg-input` field with
+   the joystick-specific prefix removed for SVG lookup."
   [input-actions* js-num]
   (let [prefix (str "js" js-num "_")
-        input-actions-filtered (filter #(str/starts-with? (:input %) prefix) input-actions*)]
-    input-actions-filtered))
+        svg-input-strip (fn [input]
+                          (str/replace input (re-pattern (str "^" prefix)) ""))]
+    (->> input-actions*
+         (filter (fn [{:keys [input]}]
+                   (and input (str/starts-with? input prefix))))
+         (map (fn [mapping]
+                (assoc mapping :svg-input (svg-input-strip (:input mapping)))))
+         (into []))))
 
-(comment
-  (find-joystick-bindings (state/load-actionmaps-legacy) 4)
-
-  (find-joystick-bindings-hickory* (extract-input-action-mappings state/actionmaps) 4))
-
-(comment
-  (->> (find-joystick-bindings state/actionmaps 5)
-       (map #(html/select % [:actionmap])))
-
-  (->> (find-joystick-bindings state/actionmaps 5)
-       (map #(html/select % [[:action (html/attr? :name)]])))
-
-  (->> (find-joystick-bindings state/actionmaps 5)
-       (mapcat #(html/select % [[:action (html/attr? :name)]]))
-       (map #(html/attr-values % :name)))
-
-  (->> (find-joystick-bindings state/actionmaps 5)
-       (mapcat #(html/select % [[:action (html/attr? :name)]]))
-       (into {} (map (fn [action]
-                       [(get-in action [:attrs :name])
-                        (-> action
-                            (html/select [:rebind])
-                            first
-                            (get-in [:attrs :input]))])))))
+(comment (find-joystick-bindings* (extract-input-action-mappings state/actionmaps) 4))
 
 (defn joystick-action-mappings
-  "Returns action mappings for a specific joystick with SVG button references"
+  "Returns action mappings for a specific joystick with SVG button references
+  Pass through due to legacy reasons"
   [actionmaps joystick-num]
-  (->> (find-joystick-bindings actionmaps joystick-num)
-       (mapcat #(html/select % [[:action (html/attr? :name)]]))
-       (keep (fn [action]
-               (let [input (-> action
-                               (html/select [:rebind])
-                               first
-                               (get-in [:attrs :input]))
-                     stripped_input (str/replace input #"^js\d+_" "")]
-                 (when input
-                   {:action (get-in action [:attrs :name])
-                    :input input
-                    :svg-input stripped_input}))))))
+  (find-joystick-bindings*
+   (extract-input-action-mappings actionmaps)
+   joystick-num))
 
-(defn joystick-action-mappings
-  "Returns action mappings for a specific joystick with SVG button references"
-  [actionmaps joystick-num]
-  (->> (find-joystick-bindings actionmaps joystick-num)
-       (mapcat #(html/select % [[:action (html/attr? :name)]]))
-       (keep (fn [action]
-               (let [input (-> action
-                               (html/select [:rebind])
-                               first
-                               (get-in [:attrs :input]))
-                     stripped_input (str/replace input #"^js\d+_" "")]
-                 (when input
-                   {:action (get-in action [:attrs :name])
-                    :input input
-                    :svg-input stripped_input}))))))
-
-(comment (joystick-action-mappings (state/load-actionmaps-legacy) 4))
+(comment (joystick-action-mappings state/actionmaps 4))
 
 (defn joystick-info
   [context instance-id]
   (let [{:keys [joystick-ids
                 svg-roots
                 svg-edn-files
+                config
                 actionmaps]} context
         {:keys [short-name product match-regex]} (joystick-ids instance-id)
         svg-key   (some-> short-name keyword)
         svg-root  (svg-roots svg-key)
         svg-edn   (svg-edn-files svg-key)
-        mappings  (joystick-action-mappings actionmaps instance-id)]
+        mappings  (joystick-action-mappings actionmaps instance-id)
+        svg-config (-> config :mapping :svg-generation)]
     {:instance-id instance-id
      :short-name  short-name
      :product     product
      :match-regex match-regex
      :svg-key     svg-key
-     :svg-root    svg-root ;; legacy
-     :svg-edn     svg-edn  ;; current, hiccup-based
-     :mappings    mappings}))
+     :svg-root    svg-root ;; Hickory
+     :svg-edn     svg-edn  ;; Custom templated
+     :mappings    mappings
+     :svg-config  svg-config}))
 
 (comment (joystick-info state/context 5))
 
@@ -194,18 +149,109 @@
 
 (defn update-svg-with-mappings
   "Updates an SVG with action mappings for a specific joystick"
-  [svg actionmaps joystick-num]
-  (let [mappings (joystick-action-mappings actionmaps joystick-num)
-        svg-config (-> config :mapping :svg-generation)
-        data-attr (:data-attribute svg-config)]
+  [{:keys [svg-root mappings svg-config]}]
+  (let [data-attr (:data-attribute svg-config)
+        hickory-tree (h/as-hickory svg-root)]
     (reduce (fn [svg-doc {:keys [svg-input action]}]
               (if svg-input
                 (html/at svg-doc
                          [[:text (html/attr= (keyword data-attr) svg-input)]]
                          (html/content (clean-action-name action)))
                 svg-doc))
-            svg
+            svg-root
             mappings)))
+
+(comment)
+(defn update-svg-from-mappings
+  [tree mappings & {:keys [format-fn additional-attrs]
+                    :or {format-fn clean-action-name
+                         additional-attrs {}}}]
+  (reduce (fn [current-tree mapping]
+            (let [svg-input (:svg-input mapping)
+                  action (:action mapping)]
+              (if (or (empty? svg-input) (= " " svg-input))
+                current-tree
+                (let [root-loc (hzip/hickory-zip current-tree)
+                      selector (s/attr :data-for #(= % svg-input))]
+                  (if-let [found-loc (s/select-next-loc selector root-loc)]
+                    (-> found-loc
+                        (zip/edit (fn [node]
+                                    (-> node
+                                        (assoc :content [(format-fn action)])
+                                        (assoc-in [:attrs :data-action] action)
+                                        (update :attrs merge additional-attrs))))
+                        zip/root)
+                    current-tree)))))
+          tree
+          mappings))
+
+(defn update-svg-from-mappings
+  [tree mappings & {:keys [format-fn additional-attrs]
+                    :or {format-fn clean-action-name
+                         additional-attrs {}}}]
+  (reduce (fn [current-tree mapping]
+            (let [svg-input (:svg-input mapping)
+                  action (:action mapping)]
+              (if (or (empty? svg-input) (= " " svg-input))
+                current-tree
+                (svg/update-nodes current-tree
+                                  (s/attr :data-for #(= % svg-input))
+                                  (svg/compose-edits
+                                   (svg/make-content-updater (format-fn action))
+                                   (svg/make-attr-updater (merge {:data-action action}
+                                                                 additional-attrs)))
+                                  :first-only? true))))
+          tree
+          mappings))
+
+(comment
+  ;; Usage with defaults
+  (let [info (joystick-info state/context 4)
+        tree (h/as-hickory (:svg-root info))
+        mappings (:mappings info)]
+    (update-svg-from-mappings tree mappings))
+
+  (update-svg-from-mappings tree mappings)
+
+  ;; Or with custom formatting
+  (let [info (joystick-info state/context 4)
+        tree (h/as-hickory (:svg-root info))
+        mappings (:mappings info)]
+
+    (update-svg-from-mappings tree mappings
+                              :format-fn #(str/upper-case (clean-action-name %))
+                              :additional-attrs {:class "mapped-button"}))
+
+  (def tree (h/as-hickory (:svg-root (joystick-info state/context 5))))
+  (def root-loc (hzip/hickory-zip tree))
+  (def selector (s/attr :data-for))
+  (s/select-next-loc selector root-loc)
+
+  (loop [loc root-loc]
+    (if-let [found-loc (s/select-next-loc selector loc)]
+      ;; Found it - modify and get the root
+      (-> found-loc
+          (zip/edit (fn [node]
+                      (-> node
+                          (assoc-in [:attrs :x] "150.0")
+                          (assoc-in [:attrs :y] "200.0")
+                          (assoc :content ["Modified"]))))
+          zip/root)
+      ;; Not found - return original tree
+      tree))
+
+  (zip/root (s/select (s/attr :data-for) (h/as-hickory (:svg-root (joystick-info state/context 5)))))
+
+  (->> (s/select (s/attr :data-for)  (h/as-hickory (:svg-root (joystick-info state/context 5))))
+       (map :attrs)
+       (map :data-for)))
+
+(comment (update-svg-with-mappings (joystick-info state/context 5))
+
+         (let [{:keys [svg-root mappings svg-config]} (joystick-info state/context 5)
+               data-attr (:data-attribute svg-config)
+               hickory-tree (h/as-hickory svg-root)]
+           (s/select (s/attr (keyword data-attr)) hickory-tree)))
 
 (defn update-svg-for-instance
   "Return updated SVG for an instance-id, or nil if no base svg exists."
