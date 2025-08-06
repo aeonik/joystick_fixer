@@ -151,7 +151,7 @@
   (when-let [svg-root (get-joystick-svg context instance-id)]
     (let [mappings (joystick-action-mappings actionmaps instance-id)
           selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
-      (update-svg-from-mappings svg-root mappings
+      (update-svg-from-mappings (h/as-hickory svg-root) mappings
                                 :selector-attr (keyword selector-attr)))))
 
 (defn update-all-svgs
@@ -463,7 +463,7 @@
   (joystick-action-mappings (:actionmaps ctx) 5)
 
   ;; Update single SVG in memory (no file I/O)
-  (update-svg-for-instance ctx 5)
+  (update-svg-for-instance ctx 4)
 
   ;; Update all SVGs in memory
   (def updated-svgs (update-all-svgs ctx))
