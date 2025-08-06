@@ -194,7 +194,7 @@
     (reduce-kv
      (fn [current-tree svg-input grouped-maps]
        (let [actions   (map :action grouped-maps)
-             action-str (format-multi-action actions {:format-fn format-fn :separator separator})
+             action-str (format-multi-action actions {:format-fn format-fn :separator separator :max-actions 10})
              data-action (str/join ";" actions)]
          (svg/update-nodes
           current-tree

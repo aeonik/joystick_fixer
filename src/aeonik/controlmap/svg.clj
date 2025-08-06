@@ -160,7 +160,8 @@
                   (fn [idx line]
                     {:type :element
                      :tag :tspan
-                     :attrs {:x x-val :dy (str (* idx 1.2) "em")}
+                     :attrs {:x x-val
+                             :dy (if (zero? idx) "0em" "1.2em")}
                      :content [line]})
                   lines))
                :else [content])))))
