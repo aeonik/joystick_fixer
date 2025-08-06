@@ -1,69 +1,81 @@
 (ns aeonik.controlmap.gui
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io]
-            [cljfx.api :as fx]
-            [cljfx.ext.web-view :as fx.ext.web-view]
-            [aeonik.controlmap.core :as core]
-            [aeonik.controlmap.state :as state]
-            [aeonik.controlmap.svg :as svg]
-            [net.cgrand.enlive-html :as html])
+  "Interactive GUI for exploring mapped SVGs and unmapped actions"
+  (:require
+   [clojure.string :as str]
+   [clojure.java.io :as io]
+   [cljfx.api :as fx]
+   [cljfx.ext.web-view :as fx.ext.web-view]
+   [aeonik.controlmap.core :as core]
+   [aeonik.controlmap.state :as state]
+   [aeonik.controlmap.svg :as svg]
+   [net.cgrand.enlive-html :as html]
+   [hickory.core :as h])
   (:import [javafx.scene.web WebEvent])
   (:gen-class))
 
-;; TODO: ChatGPT dreck here, need to use my old functions for the mapping that I made
-(defn update-context
-  "Update all SVG roots in-place: apply joystick mappings (when available),
-   then inline relative <image> hrefs as base64. Returns context with :svg-roots replaced."
-  [context]
-  (let [{:keys [svg-roots joystick-ids actionmaps]} context
-        base-path (System/getProperty "user.dir")
-        short->id (into {}
-                        (map (fn [[id {:keys [short-name]}]]
-                               [(some-> short-name keyword) id]))
-                        joystick-ids)
-        updated-roots
-        (into {}
-              (map (fn [[k svg]]
-                     (let [maybe-id (get short->id k)
-                           mapped   (if maybe-id
-                                      (core/update-svg-with-mappings svg actionmaps maybe-id)
+;; =============================================================================
+;; Context Initialization and Synchronization
+;; =============================================================================
 
-                                      svg)
-                           inlined  (svg/fix-all-relative-images-base64 mapped base-path)]
-                       [k inlined])))
-              svg-roots)]
-    (-> context
-        (assoc :svg-roots updated-roots))))
+(defn compute-initial-context
+  "Returns the initial, fully mapped, and inlined GUI context."
+  []
+  (-> @state/context
+      core/update-context))
 
-(def updated-context
-  (update-context state/context))
+(defonce ^:private gui-context (atom (compute-initial-context)))
+
+;; =============================================================================
+;; SVG Rendering Utilities
+;; =============================================================================
 
 (defn svg-tree->html-string
-  "Convert an SVG tree structure to HTML string"
+  "Renders SVG (hickory) tree into a minimal HTML document string."
   [svg-tree]
-  (let [svg-content (apply str (html/emit* svg-tree))]
-    (str "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body>"
+  (let [svg-content (svg/hickory->svg-string svg-tree)]
+    (str "<!DOCTYPE html><html><head>"
+         "<meta charset=\"utf-8\"></head><body style=\"margin:0;padding:0;\">"
          svg-content
          "</body></html>")))
 
-(defn create-data-url
-  "Create a data URL from HTML content"
+(defn html->data-url
+  "Encodes HTML string into a base64 data URL."
   [html-content]
   (str "data:text/html;base64,"
        (.encodeToString (java.util.Base64/getEncoder)
                         (.getBytes html-content "UTF-8"))))
 
-;; --- Application State ---
-(def *state
-  (atom
-   {:svg-names (keys (-> updated-context :svg-roots))
-    :active-svg (first (keys (-> updated-context :svg-roots)))
-    :status nil
-    :filter-text ""
-    :unmapped-actions (core/empty-input-bindings state/actionmaps)
-    :context updated-context}))
+;; =============================================================================
+;; Global UI State Atom
+;; =============================================================================
 
-(defn handle-status-change [old new]
+(defonce gui-state
+  (atom
+   {:context        @gui-context
+    :svg-names      (keys (get-in @gui-context [:svg-roots]))
+    :active-svg     (first (keys (get-in @gui-context [:svg-roots])))
+    :status         nil
+    :filter-text    ""
+    :unmapped-actions (core/find-empty-bindings (get-in @gui-context [:actionmaps]))}))
+
+(defn reload-context!
+  "Reloads and re-maps context, updating all SVGs and unmapped actions."
+  []
+  (let [new-context (core/update-context (state/init! :force-reload true))
+        unmapped    (core/find-empty-bindings (:actionmaps new-context))]
+    (swap! gui-state assoc
+           :context new-context
+           :svg-names (keys (:svg-roots new-context))
+           :active-svg (first (keys (:svg-roots new-context)))
+           :unmapped-actions unmapped)))
+
+;; =============================================================================
+;; State Watch/Change Handling
+;; =============================================================================
+
+(defn handle-status-event
+  "Handles updates to :status in gui-state when tab or status changes."
+  [old new]
   (let [old-svg (:active-svg old)
         new-svg (:active-svg new)
         old-status (:status old)
@@ -72,95 +84,148 @@
       ;; Tab switched
       (not= old-svg new-svg)
       (do
-        (swap! *state assoc :status nil)
-        (println "Switched tabs to:" (name new-svg)))
-      ;; Status changed in same tab
-      (and new-status (not= old-status new-status))
+        (swap! gui-state assoc :status nil)
+        (println "Switched to:" new-svg))
+      ;; Status message changed
+      (and (not= old-status new-status) new-status)
       (cond
         (str/starts-with? new-status "clicked:")
-        (let [id (subs new-status (count "clicked:"))]
-          (println "Clicked:" id "in SVG:" (name new-svg)))
+        (println "Clicked:" (subs new-status 8) "in" new-svg)
         (str/starts-with? new-status "hovered:")
-        (let [id (subs new-status (count "hovered:"))]
-          (println "Hovered:" id "in SVG:" (name new-svg)))
-        :else
-        (println "Unknown status message from" (name new-svg) ":" new-status)))))
+        (println "Hovered:" (subs new-status 8) "in" new-svg)
+        :else (println "Status event:" new-status)))))
 
-(add-watch *state ::status-watcher
+(add-watch gui-state ::status-listener
            (fn [_ _ old new]
-             (handle-status-change old new)))
+             (handle-status-event old new)))
 
-(defn unmapped-actions-panel [filter-text unmapped-actions]
-  (let [all-unmapped unmapped-actions
-        filtered (if (str/blank? filter-text)
-                   all-unmapped
-                   (filter #(str/includes? (:action %) filter-text) all-unmapped))]
+;; =============================================================================
+;; Unmapped Actions Panel
+;; =============================================================================
+
+(defn unmapped-actions-list
+  "Renders filterable list of actions without bindings."
+  [{:keys [unmapped-actions filter-text]}]
+  (let [actions (if (str/blank? filter-text)
+                  unmapped-actions
+                  (filter #(str/includes? (:action %) filter-text) unmapped-actions))]
     {:fx/type :v-box
      :spacing 10
      :padding 10
      :children
      [{:fx/type :label
-       :text "unmapped actions"
-       :style "-fx-font-size: 16px; -fx-font-weight: bold;"}
+       :text "Unmapped Actions"
+       :style "-fx-font-size: 16px; -fx-font-weight: bold"}
       {:fx/type :text-field
-       :prompt-text "filter..."
+       :prompt-text "Filter..."
        :text filter-text
-       :on-text-changed #(swap! *state assoc :filter-text %)}
+       :on-text-changed #(swap! gui-state assoc :filter-text %)}
       {:fx/type :list-view
        :v-box/vgrow :always
-       :items (mapv :action filtered)
+       :items (mapv :action actions)
        :pref-height 300
        :pref-width 350}]}))
 
-;; --- View Function ---
-(defn view [{:keys [svg-names active-svg status filter-text unmapped-actions context]}]
-  (let [svg-roots (-> context :svg-roots)]
-    {:fx/type :stage
-     :showing true
-     :title (str (name active-svg))
-     :scene
-     {:fx/type :scene
-      :root
-      {:fx/type :h-box
-       :spacing 20
-       :padding 10
-       :children
-       [{:fx/type :tab-pane
-         :side :top
-         :h-box/hgrow :always
-         :tabs (mapv
-                (fn [svg-name]
-                  (let [svg-tree (get svg-roots svg-name)
-                        html-content (svg-tree->html-string svg-tree)
-                        data-url (create-data-url html-content)]
-                    {:fx/type :tab
-                     :id (name svg-name)
-                     :text (name svg-name)
-                     :closable false
-                     :on-selection-changed
-                     (fn [e]
-                       (let [^javafx.scene.control.Tab tab (.getSource e)]
-                         (when (.isSelected tab)
-                           (swap! *state assoc :active-svg svg-name))))
-                     :content
-                     {:fx/type fx.ext.web-view/with-engine-props
-                      :desc {:fx/type :web-view
-                             :max-width Double/MAX_VALUE
-                             :max-height Double/MAX_VALUE}
-                      :props {:url data-url
-                              :on-status-changed
-                              (fn [^WebEvent evt]
-                                (swap! *state assoc :status (.getData evt)))}}}))
-                svg-names)}
-        ;; Right-side global unmapped actions list
-        (unmapped-actions-panel filter-text unmapped-actions)]}}}))
+;; =============================================================================
+;; SVG Viewing Tab Pane
+;; =============================================================================
 
-;; --- Renderer ---
+(defn svg-tab
+  "Returns a single tab containing a rendered SVG."
+  [{:keys [svg-name svg-tree active?]}]
+  (let [html-content (svg-tree->html-string svg-tree)
+        data-url (html->data-url html-content)]
+    {:fx/type :tab
+     :id (name svg-name)
+     :text (name svg-name)
+     :closable false
+     :on-selection-changed
+     (fn [e]
+       (let [^javafx.scene.control.Tab tab (.getSource e)]
+         (when (.isSelected tab)
+           (swap! gui-state assoc :active-svg svg-name))))
+     :content
+     {:fx/type fx.ext.web-view/with-engine-props
+      :desc {:fx/type :web-view
+             :max-width Double/MAX_VALUE
+             :max-height Double/MAX_VALUE}
+      :props {:url data-url
+              :on-status-changed
+              (fn [^WebEvent evt]
+                (swap! gui-state assoc :status (.getData evt)))}}}))
+
+(defn svg-tab-pane
+  "Tab pane for all SVGs in the current context."
+  [context svg-names active-svg]
+  {:fx/type :tab-pane
+   :side :top
+   :h-box/hgrow :always
+   :tabs
+   (mapv (fn [svg-name]
+           (svg-tab {:svg-name svg-name
+                     :svg-tree (get-in context [:svg-roots svg-name])
+                     :active? (= svg-name active-svg)}))
+         svg-names)})
+
+;; =============================================================================
+;; Top-Level View
+;; =============================================================================
+
+(defn root-view
+  "Main GUI view function, orchestrates SVG pane and sidepanel."
+  [{:keys [context svg-names active-svg status filter-text unmapped-actions]}]
+  {:fx/type :stage
+   :showing true
+   :title (str "ControlMap: " (name active-svg))
+   :width 1280
+   :height 900
+   :scene
+   {:fx/type :scene
+    :root
+    {:fx/type :h-box
+     :spacing 20
+     :padding 10
+     :children
+     [(svg-tab-pane context svg-names active-svg)
+      (unmapped-actions-list {:unmapped-actions unmapped-actions
+                              :filter-text filter-text})]}}})
+
+;; =============================================================================
+;; Renderer and Main Entry Point
+;; =============================================================================
+
 (def renderer
   (fx/create-renderer
-   :middleware (fx/wrap-map-desc #'view)))
+   :middleware (fx/wrap-map-desc #'root-view)))
+
+(defn run-gui!
+  "Mounts the GUI. Optional: call reload-context! before for reload."
+  []
+  (fx/mount-renderer gui-state renderer))
 
 (defn -main
+  "Entry point for standalone execution (via clj -M/-main)."
   [& args]
-  ;; --- App Start ---
-  (fx/mount-renderer *state renderer))
+  (run-gui!))
+
+;; =============================================================================
+;; Development & REPL Helpers
+;; =============================================================================
+
+(comment
+  ;; To reload all mappings and re-mount:
+  (reload-context!)
+  (run-gui!)
+
+  ;; Or just show GUI immediately (using current context):
+  (run-gui!)
+
+  ;; Update unmapped actions list manually if needed:
+  (swap! gui-state assoc :unmapped-actions (core/find-empty-bindings (get-in @gui-state [:context :actionmaps])))
+
+  ;; To debug the current GUI state:
+  @gui-state
+
+  ;; To force reload and mount fresh context:
+  (reload-context!)
+  (run!))
