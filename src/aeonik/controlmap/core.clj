@@ -177,6 +177,14 @@
                   [(keyword short-name) id])))
         joystick-ids))
 
+(defn short-name->display-name [context short-name]
+  (-> context
+      :joystick-ids
+      (as-> ids
+            (get ids (short-name (build-joystick-lookup ids))))
+      :match-regex
+      str))
+
 (defn update-svg-roots
   "Updates all SVG roots with mappings and inlined images.
    Pure function - returns new svg-roots map."
