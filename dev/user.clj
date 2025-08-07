@@ -2,6 +2,7 @@
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
             [clojure.string :as str]
+            [cljfx.dev]
             [zprint.core :as z]))
 
 (comment (clerk/serve! {:host "localhost" :browse true :watch-paths ["src"]}))

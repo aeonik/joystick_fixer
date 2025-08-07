@@ -144,27 +144,42 @@
 
 ;; TODO: Figure out how to get the tspan out of here, and use the functions below
 (defn make-content-updater
-  "Creates an edit function that updates content. Supports multiline <tspan> if string contains newlines, <br>, or semicolons."
-  [content-or-fn]
+  "Updates a node’s :content.
+
+   • If `content-or-fn` is a **vector of action strings**, it produces
+     a separate <tspan> per action, re-using the node’s :x and :y (or :x only).
+   • If it’s a **string**, it stays as one tspan.
+   • If it’s a **fn**, the fn is called with the node (unchanged behaviour)."
+  [content-or-fn & {:keys [line-height] :or {line-height "1.2em"}}]
   (fn [node]
-    (let [x-val (get-in node [:attrs :x])
-          content (cond
-                    (fn? content-or-fn) (content-or-fn node)
-                    :else content-or-fn)]
+    (let [content (if (fn? content-or-fn) (content-or-fn node) content-or-fn)
+          x       (get-in node [:attrs :x])
+          y       (get-in node [:attrs :y])]
+
       (assoc node :content
              (cond
-               (vector? content) content
-               (string? content)
-               (let [lines (str/split content #"(?:\s*<br\s*/?>\s*|\s*;\s*|\s*\n\s*)")]
-                 (map-indexed
-                  (fn [idx line]
-                    {:type :element
-                     :tag :tspan
-                     :attrs {:x x-val
-                             :dy (if (zero? idx) "0em" "1.2em")}
-                     :content [line]})
-                  lines))
-               :else [content])))))
+               ;; ── 1) vector of actions → multi-tspan
+               (vector? content)
+               (map-indexed
+                (fn [idx action]
+                  {:type    :element
+                   :tag     :tspan
+                   :attrs   (cond-> {:x x}
+                              y (assoc :y y)
+                              (pos? idx) (assoc :dy line-height))
+                   :content [action]})
+                content)
+
+               ;; ── 2) already a Hickory element/vector → leave untouched
+               (and (coll? content) (keyword? (:tag (first content))))
+               content
+
+               ;; ── 3) plain string → single tspan (old behaviour)
+               :else
+               [{:type :element
+                 :tag  :tspan
+                 :attrs {:x x :y y}
+                 :content [content]}])))))
 
 (defn make-attr-updater
   "Creates an edit function that updates attributes"
@@ -405,6 +420,38 @@
   [svg-content]
   (create-data-url svg-content "image/svg+xml"))
 
+(defn svg-tree->html-string
+  "Renders SVG (hickory) tree into a minimal HTML document string."
+  [svg-tree]
+  (let [svg-content (hickory->svg-string svg-tree)]
+    (str "<!DOCTYPE html>"
+         "<html><head>"
+         "<meta charset=\"utf-8\">"
+         "<style>"
+         "body { margin: 0; padding: 0; overflow: hidden; }"
+         "svg { max-width: 100%; height: auto; display: block; }"
+         "</style>"
+         "</head><body>"
+         svg-content
+         "</body></html>")))
+
+(defn html->data-url
+  "Encodes HTML string into a base64 data URL."
+  [html-content]
+  (str "data:text/html;base64,"
+       (.encodeToString (java.util.Base64/getEncoder)
+                        (.getBytes html-content "UTF-8"))))
+
+(defn inline-images
+  "Return `tree` with every relative <img src=\"…\"> replaced by a base-64
+   data-URI.
+   ─ Arity-1: defaults the base directory to the current working dir.
+   ─ Arity-2: let the caller choose the base directory."
+  ([tree]                                   ; use CWD
+   (inline-images tree (System/getProperty "user.dir")))
+  ([tree base-dir]                          ; explicit dir
+   (fix-all-relative-images-base64 tree base-dir)))
+
 ;; =============================================================================
 ;; SVG Analysis Utilities
 ;; =============================================================================
@@ -445,11 +492,11 @@
 (comment
   ;; Load some test data
   (require '[aeonik.controlmap.state :as state])
-  (def ctx @state/context)
-  (def tree (get-in ctx [:svg-roots :alpha_L]))
+  (def ctx (state/get-context))
+  (def tree (get-in ctx [:svgs :alpha_RP]))
 
   ;; Test EDN to SVG conversion
-  (def edn-config (get-in ctx [:svg-edn-configs :alpha_L]))
+  (def edn-config (get-in ctx [:edn-configs :alpha_R]))
   (when edn-config
     (def svg-from-edn (edn-config->hickory [:alpha_L edn-config])))
 

@@ -183,43 +183,41 @@
      ;; Priority 2: Platform-specific known paths
      (find-file (get-search-paths)))))
 
-(defn load-actionmaps
-  "Loads and returns the actionmaps file content as a string.
-   Throws an exception if the file cannot be found or read."
-  []
-  (if-let [file (find-actionmaps)]
-    (slurp file)
-    (throw (ex-info "Actionmaps file not found"
-                    {:searched-paths (get-search-paths)
-                     :platform (detect-platform)
-                     :env-var (-> (get-config) :discovery :environment-var)
-                     :env-value (System/getenv (-> (get-config) :discovery :environment-var))}))))
-
 ;; =============================================================================
 ;; Product Mapping
 ;; =============================================================================
 
-(defn get-product-svg-mapping
-  "Returns product->svg mapping with compiled regex patterns.
-   Returns a vector of [regex-pattern svg-name] pairs."
+(defn build-joystick-registry
+  "Transforms simple user config into efficient runtime structure.
+   This handles the duplicate svg-ids (vpc_mongoose_t50cm3) properly."
   []
   (let [config (get-config)
         mapping (-> config :mapping :product-svg-mapping)]
-    (mapv (fn [[pattern svg]]
-            [(re-pattern pattern) svg])
-          mapping)))
+    ;; Group by svg-id to handle duplicates
+    {:by-svg (reduce (fn [acc [pattern svg-id]]
+                       (update acc (keyword svg-id)
+                               (fnil conj [])
+                               (re-pattern (str "(?i)" pattern))))
+                     {}
+                     mapping)
+     ;; Keep flat list for pattern matching
+     :matchers (mapv (fn [[pattern svg-id]]
+                       {:pattern (re-pattern (str "(?i)" pattern))
+                        :svg-id (keyword svg-id)
+                        :display pattern})  ; Use pattern as display
+                     mapping)}))
 
 (defn find-svg-for-product
-  "Finds the SVG name for a given product string, case-insensitively.
-   Returns the SVG name or nil if no match found."
-  [product-string]
-  (let [lower-product (str/lower-case product-string)
-        mappings (get-product-svg-mapping)]
-    (some (fn [[pattern svg-name]]
-            (let [lower-pattern (re-pattern (str "(?i)" (str pattern)))]
-              (when (re-find lower-pattern lower-product)
-                svg-name)))
-          mappings)))
+  "Find which SVG to use for a product string"
+  [registry product-string]
+  (some (fn [{:keys [pattern svg-id]}]
+          (when (re-find pattern product-string) svg-id))
+        (:matchers registry)))
+
+(defn get-patterns-for-svg
+  "Get all patterns that map to an svg-id"
+  [registry svg-id]
+  (get-in registry [:by-svg svg-id]))
 
 ;; =============================================================================
 ;; Status & Information
@@ -300,15 +298,4 @@
   (actionmaps-info)
 
   ;; Print nice status report
-  (print-discovery-status!)
-
-  ;; Test product mapping
-  (find-svg-for-product "VKB-Sim Gladiator")
-
-  (find-svg-for-product "VIRPIL Controls 20240617 L-VPC Stick MT-50CM2  {012F3344-0000-0000-0000-504944564944}")
-
-  (find-svg-for-product "RIGHT VPC Stick MT-50CM3  {83903344-0000-0000-0000-504944564944}")
-
-  (find-svg-for-product "VPC Throttle MT-50CM3  {01973344-0000-0000-0000-504944564944}")
-
-  (get-product-svg-mapping))
+  (print-discovery-status!))

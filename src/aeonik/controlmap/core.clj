@@ -16,486 +16,280 @@
 ;; =============================================================================
 
 (defn clean-action-name
-  "Removes common prefixes and arbitrary regex patterns from action names for cleaner display"
+  "Removes common prefixes and arbitrary regex patterns from action names"
   [action-name]
-  (let [config (discovery/get-config)
-        cleaning-config (-> config :mapping :action-name-cleaning)
-        {:keys [remove-v-prefix prefix-filters regex-filters]} cleaning-config
-        filtered-name (if remove-v-prefix
-                        (str/replace action-name #"^v_" "")
-                        action-name)
-        prefix-cleaned (reduce (fn [acc prefix]
-                                 (if (str/starts-with? acc prefix)
-                                   (subs acc (count prefix))
-                                   acc))
-                               filtered-name
-                               prefix-filters)]
-    (reduce (fn [acc regex-string]
-              (str/replace acc (re-pattern regex-string) ""))
-            prefix-cleaned
-            (or regex-filters []))))
+  (when (some? action-name)
+    (let [config (discovery/get-config)
+          {:keys [remove-v-prefix prefix-filters regex-filters]}
+          (-> config :mapping :action-name-cleaning)
+
+          filtered-name (if remove-v-prefix
+                          (str/replace action-name #"^v_" "")
+                          action-name)
+
+          prefix-cleaned (reduce (fn [acc prefix]
+                                   (if (str/starts-with? acc prefix)
+                                     (subs acc (count prefix))
+                                     acc))
+                                 filtered-name
+                                 prefix-filters)]
+      (reduce (fn [acc regex-string]
+                (str/replace acc (re-pattern regex-string) ""))
+              prefix-cleaned
+              (or regex-filters [])))))
 
 ;; =============================================================================
 ;; Action Mapping Extraction
 ;; =============================================================================
 
-(defn extract-input-action-mappings
-  "Extracts all input-action mappings from the actionmaps.
-   Returns a vector of {:input '...' :action '...'} maps.
-   Note: actionmaps should already be in Hickory format."
+(defn extract-all-mappings
+  "Returns a map from input → vector of actions, e.g. {\"js1_button6\" [\"v_toggle_missile_mode\"] ...}"
   [actionmaps]
-  (->> actionmaps  ; Already in Hickory format, no conversion needed
+  (->> actionmaps
        (s/select (s/tag :action))
        (map (fn [action-node]
               (let [action-name (get-in action-node [:attrs :name])
                     rebind-node (first (s/select (s/tag :rebind) action-node))
                     input (get-in rebind-node [:attrs :input])]
-                {:input input
-                 :action action-name})))
-       (filter :action)  ; Remove any malformed entries
-       vec))
+                {:input input :action action-name})))
+       (remove #(str/blank? (:input %)))
+       (reduce (fn [m {:keys [input action]}]
+                 (update m input (fnil conj []) action))
+               {})))
 
-(defn joystick-action-mappings
-  "Returns action mappings for a specific joystick instance.
-   Adds :svg-input field with the joystick prefix stripped."
-  [actionmaps joystick-num]
-  (let [prefix (str "js" joystick-num "_")
-        all-mappings (extract-input-action-mappings actionmaps)]
-    (->> all-mappings
-         (filter (fn [{:keys [input]}]
-                   (and input (str/starts-with? input prefix))))
-         (map (fn [mapping]
-                (assoc mapping
-                       :svg-input (str/replace (:input mapping)
-                                               (re-pattern (str "^" prefix))
-                                               ""))))
-         vec)))
+(defn instance-mappings
+  "For `instance-id` N, return {\"buttonXX\" [actions …]} drawn from
+   keys that start with \"jsN_\"."
+  [actionmaps instance-id]
+  (let [prefix (str "js" instance-id "_")
+        xf     (comp
+                (filter (fn [[k _]] (str/starts-with? k prefix))) ; keep only this stick
+                (map    (fn [[k v]] [(subs k (count prefix)) v])))] ; strip prefix
+    (into {} xf (extract-all-mappings actionmaps))))
 
 ;; =============================================================================
-;; Joystick Information
+;; Display Names
 ;; =============================================================================
 
-(defn joystick-info
-  "Gathers all information about a specific joystick instance.
-   Returns a map with all relevant data for SVG generation."
+(defn svg-id->display-name
+  "Gets display name for an svg-id"
+  [context svg-id]
+  (or (get-in context [:registry :displays svg-id])
+      ;; Fallback: use first pattern
+      (when-let [patterns (get-in context [:registry :by-svg svg-id])]
+        (-> (str (first patterns))
+            (str/replace #"^\(\?i\)" "")))))
+
+(defn instance->display-name
+  "Gets display name for an instance"
   [context instance-id]
-  (let [{:keys [joystick-ids svg-roots svg-edn-configs config actionmaps]} context
-        joystick-data (get joystick-ids instance-id)
-        {:keys [short-name product match-regex]} joystick-data
-        svg-key (some-> short-name keyword)
-        svg-root (get svg-roots svg-key)
-        svg-edn (get svg-edn-configs svg-key)
-        mappings (joystick-action-mappings actionmaps instance-id)
-        svg-config (-> config :mapping :svg-generation)]
-    {:instance-id instance-id
-     :short-name short-name
-     :product product
-     :match-regex match-regex
-     :svg-key svg-key
-     :svg-root svg-root
-     :svg-edn svg-edn
-     :mappings mappings
-     :svg-config svg-config
-     :has-svg? (boolean svg-root)
-     :mapping-count (count mappings)}))
+  (when-let [svg-id (get-in context [:instances instance-id])]
+    (svg-id->display-name context svg-id)))
 
 ;; =============================================================================
 ;; SVG Update Functions
 ;; =============================================================================
 
-(defn group-mappings-by-svg-input
-  "Groups mappings by :svg-input (button) value."
-  [mappings]
-  (->> mappings
-       (group-by :svg-input)
-       (remove (comp str/blank? key))
-       (into {})))
-
-(defn format-multi-action
-  "formats all actions assigned to a button for svg display."
-  [actions {:keys [format-fn separator max-actions]}]
-  (let [format-fn (or format-fn identity)
-        separator (or separator " / ")
-        display-actions (map format-fn actions)
+(defn format-button-actions
+  "Formats multiple actions for a button"
+  [actions & {:keys [format-fn separator max-actions]
+              :or {format-fn clean-action-name
+                   separator " / "
+                   max-actions 8}}]
+  (let [cleaned (map format-fn actions)
         n (count actions)]
     (cond
-      (> n (or max-actions 8))
-      (str (str/join separator (take (max-actions 8) display-actions)) " ...")
-      (> n 1)
-      (str (str/join separator display-actions))
-      (= n 1)
-      (first display-actions)
-      :else "")))
+      (= n 0) ""
+      (= n 1) (first cleaned)
+      (> n max-actions) (str (str/join separator (take max-actions cleaned)) " ...")
+      :else (str/join separator cleaned))))
 
-(defn find-multi-bound-buttons
-  [mappings]
-  (->> (group-mappings-by-svg-input mappings)
-       (filter (fn [[svg-input acts]] (> (count acts) 1)))
-       (into {})))
+(defn update-svg-with-mappings
+  "Updates an SVG tree so each mapped button gets one <tspan> per action."
+  [svg-tree mappings & {:keys [selector-attr format-fn]
+                        :or {selector-attr :data-for
+                             format-fn      clean-action-name}}]
 
-(defn analyze-button-usage
-  "Returns a map of {svg-input {:count n :actions [...]}}"
-  [mappings]
-  (->> mappings
-       group-mappings-by-svg-input
-       (map (fn [[svg-input acts]] [svg-input {:count (count acts)
-                                               :actions (map :action acts)}]))
-       (into {})))
-
-(defn build-joystick-lookup
-  "Creates a map of svg-key -> instance-id for reverse lookups"
-  [joystick-ids]
-  (into {}
-        (keep (fn [[id {:keys [short-name]}]]
-                (when short-name
-                  [(keyword short-name) id])))
-        joystick-ids))
-
-(defn short-name->display-name [context short-name]
-  (-> context
-      :joystick-ids
-      (as-> ids
-            (get ids (short-name (build-joystick-lookup ids))))
-      :match-regex
-      str))
-
-(defn update-svg-from-mappings
-  "Updates an SVG tree with action mappings.
-   Uses the svg/update-nodes function for clean updates."
-  [tree mappings & {:keys [format-fn additional-attrs selector-attr]
-                    :or {format-fn clean-action-name
-                         additional-attrs {}
-                         selector-attr :data-for}}]
-  (reduce (fn [current-tree mapping]
-            (let [svg-input (:svg-input mapping)
-                  action (:action mapping)]
-              (if (str/blank? svg-input)
-                current-tree
-                (svg/update-nodes current-tree
-                                  (s/attr selector-attr #(= % svg-input))
-                                  (svg/compose-edits
-                                   (svg/make-content-updater (format-fn action))
-                                   (svg/make-attr-updater
-                                    (merge {:data-action action}
-                                           additional-attrs)))
-                                  :first-only? true))))
-          tree
-          mappings))
-
-;; I want to clean this version up
-(defn update-svg-from-mappings
-  "Updates an SVG tree with all actions for each :svg-input button."
-  [tree mappings & {:keys [format-fn additional-attrs selector-attr separator]
-                    :or   {format-fn clean-action-name
-                           additional-attrs {}
-                           selector-attr :data-for
-                           separator " <br> "}}]
-  (let [actions-by-input (group-mappings-by-svg-input mappings)]
-    (reduce-kv
-     (fn [current-tree svg-input grouped-maps]
-       (let [actions   (map :action grouped-maps)
-             action-str (format-multi-action actions {:format-fn format-fn :separator separator :max-actions 10})
-             data-action (str/join ";" actions)]
-         (svg/update-nodes
-          current-tree
-          (s/attr selector-attr #(= % svg-input))
-          (svg/compose-edits
-           (svg/make-content-updater action-str)
-           (svg/make-attr-updater (merge
-                                   {:data-action data-action
-                                    :data-action-count (str (count actions))
-                                    ;; (optionally add more metadata)
-                                    }
-                                   additional-attrs)))
-          :first-only? true)))
-     tree
-     actions-by-input)))
-
-(defn render-svg
-  "Renders a Hickory SVG tree to an HTML string"
-  [svg-tree]
-  (render/hickory-to-html svg-tree))
+  (reduce-kv
+   (fn [tree button-id actions]
+     (svg/update-nodes
+      tree
+      (s/attr selector-attr #(= % button-id))
+      (svg/compose-edits
+       ;; vector in → multi-tspan out
+       (svg/make-content-updater (mapv format-fn actions))
+       (svg/make-attr-updater
+        {:data-actions (str/join ";" actions)
+         :data-count   (str (count actions))}))
+      :first-only? true))
+   svg-tree
+   mappings))
 
 ;; =============================================================================
-;; Core SVG Generation Functions
+;; Core Generation Functions
 ;; =============================================================================
 
-(defn get-joystick-svg
-  "Gets the base SVG for a joystick instance"
-  [{:keys [svg-roots joystick-ids]} instance-id]
-  (let [short-name (get-in joystick-ids [instance-id :short-name])
-        svg-key (some-> short-name keyword)]
-    (get svg-roots svg-key)))
+(defn get-svg-for-instance
+  "Gets the SVG tree for an instance"
+  [context instance-id]
+  (when-let [svg-id (get-in context [:instances instance-id])]
+    (get-in context [:svgs svg-id])))
 
 (defn update-svg-for-instance
-  "Pure function: Returns updated SVG tree for an instance-id.
-   Returns nil if no base SVG exists."
-  [{:keys [actionmaps config] :as context} instance-id]
-  (when-let [svg-root (get-joystick-svg context instance-id)]
-    (let [mappings (joystick-action-mappings actionmaps instance-id)
-          selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
-      (update-svg-from-mappings svg-root mappings
-                                :selector-attr (keyword selector-attr)))))
+  "Updates SVG for a specific instance with its mappings"
+  [context instance-id]
+  (when-let [svg-tree (get-svg-for-instance context instance-id)]
+    (let [mappings (instance-mappings (:actionmaps context) instance-id)
+          selector (get-in context [:config :mapping :svg-generation :data-attribute] :data-for)]
+      (update-svg-with-mappings svg-tree mappings
+                                :selector-attr (keyword selector)))))
 
 (defn update-all-svgs
-  "Pure function: Returns map of {instance-id -> updated-svg-tree} for all instances."
-  [{:keys [joystick-ids] :as context}]
-  (->> (keys joystick-ids)
-       (keep (fn [id]
-               (when-let [svg (update-svg-for-instance context id)]
-                 [id svg])))
-       (into {})))
-
-;; =============================================================================
-;; Context Management
-;; =============================================================================
-
-(defn update-svg-roots
-  "Updates all SVG roots with mappings and inlined images.
-   Pure function - returns new svg-roots map."
-  [{:keys [svg-roots joystick-ids actionmaps config] :as context}]
-  (let [base-path (System/getProperty "user.dir")
-        short->id (build-joystick-lookup joystick-ids)
-        selector-attr (get-in config [:mapping :svg-generation :data-attribute] :data-for)]
-    (into {}
-          (map (fn [[svg-key svg-root]]
-                 (let [instance-id (get short->id svg-key)
-                       ;; Apply mappings if we have an instance for this SVG
-                       mapped-svg (if instance-id
-                                    (let [mappings (joystick-action-mappings actionmaps instance-id)]
-                                      (update-svg-from-mappings svg-root mappings
-                                                                :selector-attr (keyword selector-attr)))
-                                    svg-root)
-                       ;; Inline images
-                       final-svg (svg/fix-all-relative-images-base64 mapped-svg base-path)]
-                   [svg-key final-svg])))
-          svg-roots)))
-
-(defn update-context
-  "Returns context with updated :svg-roots. Pure function."
+  "Updates all SVGs with their mappings"
   [context]
-  (assoc context :svg-roots (update-svg-roots context)))
+  (into {}
+        (keep (fn [instance-id]
+                (when-let [updated (svg/inline-images (update-svg-for-instance context instance-id))]
+                  [instance-id updated]))
+              (keys (:instances context)))))
 
 ;; =============================================================================
-;; File Generation (Side Effects)
+;; File I/O
 ;; =============================================================================
-
-(defn svg-output-path
-  "Generates the output path for an SVG file"
-  [{:keys [config]} svg-name output-dir]
-  (let [prefix (get-in config [:mapping :svg-generation :filename-prefix] "")]
-    (str output-dir "/" prefix svg-name ".svg")))
 
 (defn write-svg!
-  "Writes an SVG tree to a file. Returns the path written or nil on error."
-  [svg-tree output-path]
+  "Writes an SVG tree to file"
+  [svg-tree path]
   (try
-    (io/make-parents output-path)
-    (spit output-path (render-svg svg-tree))
-    output-path
+    (io/make-parents path)
+    (spit path (render/hickory-to-html svg-tree))
+    path
     (catch Exception e
-      (println (format "Error writing SVG to %s: %s"
-                       output-path (.getMessage e)))
+      (println (format "Error writing %s: %s" path (.getMessage e)))
       nil)))
 
-(defn generate-svg-for-instance!
-  "Generates and writes an updated SVG for a specific joystick instance.
-   Returns the output path or nil if generation failed."
-  [{:keys [config] :as context} instance-id output-dir]
-  (let [info (joystick-info context instance-id)]
-    (cond
-      (not (:has-svg? info))
-      (do (println (format "⚠️ No SVG template for instance %d (%s)"
-                           instance-id (:product info)))
-          nil)
-
-      (zero? (:mapping-count info))
-      (do (println (format "⚠️ No mappings for instance %d (%s)"
-                           instance-id (:product info)))
-          nil)
-
-      :else
-      (if-let [updated-svg (update-svg-for-instance context instance-id)]
-        (let [output-path (svg-output-path context (:short-name info) output-dir)]
-          (when (write-svg! updated-svg output-path)
-            (println (format "✓ Generated: %s (instance %d, %d mappings)"
-                             output-path instance-id (:mapping-count info)))
-            output-path))
-        nil))))
+(defn generate-svg!
+  "Generates and writes SVG for an instance"
+  [context instance-id output-dir]
+  (if-let [svg-id (get-in context [:instances instance-id])]
+    (if-let [updated-svg (update-svg-for-instance context instance-id)]
+      (let [prefix (get-in context [:config :mapping :svg-generation :filename-prefix] "")
+            path (str output-dir "/" prefix (name svg-id) ".svg")]
+        (when (write-svg! updated-svg path)
+          (println (format "✓ Generated %s for instance %d" path instance-id))
+          path))
+      (println (format "⚠️ No SVG template for instance %d" instance-id)))
+    (println (format "⚠️ Instance %d not mapped to any SVG" instance-id))))
 
 (defn generate-all-svgs!
-  "Generates updated SVGs for all known joystick instances.
-   Returns vector of successfully written paths."
+  "Generates all SVGs"
   ([context]
-   (let [default-dir (get-in context [:config :mapping :svg-generation :default-output-dir])]
-     (generate-all-svgs! context default-dir)))
-  ([{:keys [joystick-ids] :as context} output-dir]
-   (println (format "\n📁 Output directory: %s" output-dir))
-   (println (format "🎮 Processing %d joystick instances..." (count joystick-ids)))
-   (println)
-   (let [results (->> (keys joystick-ids)
-                      (map #(generate-svg-for-instance! context % output-dir))
-                      (filter some?)
-                      vec)]
-     (println)
-     (println (format "📊 Results: %d/%d SVGs generated successfully"
-                      (count results) (count joystick-ids)))
-     results)))
+   (let [output-dir (get-in context [:config :mapping :svg-generation :default-output-dir])]
+     (generate-all-svgs! context output-dir)))
+  ([context output-dir]
+   (println (format "\n📁 Output: %s" output-dir))
+   (println (format "🎮 Processing %d instances..." (count (:instances context))))
+   (let [results (keep #(generate-svg! context % output-dir)
+                       (keys (:instances context)))]
+     (println (format "✅ Generated %d SVGs" (count results)))
+     (vec results))))
 
 ;; =============================================================================
-;; Analysis & Inspection Functions
+;; Analysis Functions
 ;; =============================================================================
 
-(defn find-empty-bindings
-  "Find all action mappings with empty input bindings.
-   Optionally filter by action keyword."
-  ([actionmaps]
-   (find-empty-bindings actionmaps nil))
-  ([actionmaps action-filter]
-   (let [all-mappings (extract-input-action-mappings actionmaps)
-         empty-mappings (filter #(str/blank? (:input %)) all-mappings)]
-     (if action-filter
-       (filter #(str/includes? (:action %) (name action-filter))
-               empty-mappings)
-       empty-mappings))))
+(def unmapped-key-re #"^\s*(?:[a-z]{2}\d+_\s?)?$")
 
-(defn joystick-summary
-  "Returns a summary of joystick configuration"
-  [{:keys [joystick-ids svg-roots actionmaps]}]
-  (let [instances (map (fn [[id info]]
-                         (let [svg-key (keyword (:short-name info))
-                               mappings (joystick-action-mappings actionmaps id)]
-                           [id (assoc info
-                                      :has-svg? (boolean (get svg-roots svg-key))
-                                      :mapping-count (count mappings))]))
-                       joystick-ids)]
-    {:total-joysticks (count joystick-ids)
-     :joysticks-with-svgs (count (filter (fn [[_ info]] (:has-svg? info)) instances))
-     :total-mappings (count (extract-input-action-mappings actionmaps))
-     :empty-mappings (count (find-empty-bindings actionmaps))
-     :instances (into {} instances)}))
+(defn find-unmapped-actions
+  "Flatten all actions whose input key is blank, nil, or a bare
+   two-letter device prefix (js/kb/…) followed only by digits and “_”."
+  [actionmaps]
+  (into []
+        (comp (filter (fn [[k _]]
+                        (re-matches unmapped-key-re (str (or k "")))))
+              (mapcat val))          ; concat each action-vector into the output
+        (extract-all-mappings actionmaps)))
 
-;; =============================================================================
-;; System Status & Diagnostics
-;; =============================================================================
+(defn analyze-instance
+  "Analyzes a single instance"
+  [context instance-id]
+  (let [svg-id (get-in context [:instances instance-id])
+        product (get-in context [:products instance-id])
+        mappings (instance-mappings (:actionmaps context) instance-id)]
+    {:instance-id instance-id
+     :svg-id svg-id
+     :product product
+     :has-svg? (boolean (and svg-id (get-in context [:svgs svg-id])))
+     :mapping-count (count mappings)
+     :multi-binds (count (filter #(> (count (val %)) 1) mappings))}))
 
-(defn system-status
-  "Returns comprehensive system status including discovery info"
+(defn summary
+  "Returns system summary"
   [context]
-  (let [discovery-info (discovery/actionmaps-info)
-        actionmaps-loaded? (boolean (:actionmaps context))
-        summary (when actionmaps-loaded?
-                  (joystick-summary context))]
-    (merge discovery-info
-           {:actionmaps-loaded? actionmaps-loaded?
-            :svg-resources-loaded (count (:svg-roots context))
-            :context-updated? (boolean (:context-updated? context))}
-           (when summary
-             {:joystick-summary summary}))))
+  (let [analyses (map #(analyze-instance context %)
+                      (keys (:instances context)))]
+    {:total-instances (count (:instances context))
+     :mapped-instances (count (filter :svg-id analyses))
+     :loaded-svgs (count (:svgs context))
+     :total-mappings (count (extract-all-mappings (:actionmaps context)))
+     :unmapped-actions (count (find-unmapped-actions (:actionmaps context)))
+     :instances analyses}))
+
+;; =============================================================================
+;; Status Display
+;; =============================================================================
 
 (defn print-status!
-  "Prints formatted system status to console"
+  "Prints system status"
   [context]
-  (let [status (system-status context)]
+  (let [s (summary context)]
     (println "\n╔══════════════════════════════════════╗")
     (println "║     ControlMap System Status        ║")
     (println "╚══════════════════════════════════════╝")
     (println)
-    (println "Platform:" (:platform status))
-    (println "Actionmaps found:" (:exists? status))
-    (println "Actionmaps valid:" (:valid? status))
-    (println "Actionmaps path:" (:path status))
-
-    (when (:env-override status)
-      (println "Environment override:" (:env-override status)))
-
-    (println "\n── Resources ──")
-    (println "Actionmaps loaded:" (:actionmaps-loaded? status))
-    (println "SVG resources:" (:svg-resources-loaded status))
-
-    (when-let [summary (:joystick-summary status)]
-      (println "\n── Joysticks ──")
-      (println "Total configured:" (:total-joysticks summary))
-      (println "With SVG templates:" (:joysticks-with-svgs summary))
-      (println "Total mappings:" (:total-mappings summary))
-      (println "Unmapped actions:" (:empty-mappings summary))
-
-      (println "\n── Instances ──")
-      (doseq [[id info] (sort-by key (:instances summary))]
-        (let [status-icon (cond
-                            (not (:has-svg? info)) "✗"
-                            (zero? (:mapping-count info)) "○"
-                            :else "✓")]
-          (println (format "  [%d] %s %s (%s) - %d mappings"
-                           id
-                           status-icon
-                           (or (:product info) "Unknown")
-                           (or (:short-name info) "no-svg")
-                           (:mapping-count info))))))
-
-    (when (and (not (:exists? status)) (:searched-paths status))
-      (println "\n── Search Paths ──")
-      (doseq [path (:searched-paths status)]
-        (println "  •" path)))
-
-    (println "\n════════════════════════════════════════\n")))
+    (println "Instances detected:" (:total-instances s))
+    (println "Instances mapped:" (:mapped-instances s))
+    (println "SVGs loaded:" (:loaded-svgs s))
+    (println "Total mappings:" (:total-mappings s))
+    (println "Unmapped actions:" (:unmapped-actions s))
+    (println "\n── Instance Details ──")
+    (doseq [{:keys [instance-id svg-id product has-svg? mapping-count]}
+            (sort-by :instance-id (:instances s))]
+      (let [icon (cond
+                   (not svg-id) "❌"
+                   (not has-svg?) "⚠️"
+                   (zero? mapping-count) "○"
+                   :else "✓")]
+        (println (format "  [%d] %s %s (%s) - %d mappings"
+                         instance-id icon
+                         (or (name svg-id) "unmapped")
+                         (or product "unknown")
+                         mapping-count))))))
 
 ;; =============================================================================
 ;; Main Entry Point
 ;; =============================================================================
 
-(defn initialize-context
-  "Initialize or update the context with current data.
-   Options:
-   - :skip-svgs - Don't load SVG resources
-   - :skip-edn - Don't load EDN configs
-   - :force-reload - Force reload even if already initialized"
-  [& opts]
-  (let [options (apply hash-map opts)
-        base-context (if (:force-reload options)
-                       (apply state/build-context (flatten (seq options)))
-                       @state/context)]
-    (-> base-context
-        (update-context)
-        (assoc :context-updated? true))))
-
 (defn -main
-  "Main entry point - generates all SVGs with current actionmaps"
   [& args]
   (try
     (println "\n🚀 Star Citizen ControlMap Generator")
     (println "════════════════════════════════════")
 
-    ;; Initialize context
-    (let [context (initialize-context)]
-
-      ;; Print status
+    (let [context (state/build-context)]
       (print-status! context)
 
-      ;; Check if we can proceed
       (if (:actionmaps context)
         (do
-          ;; Generate SVGs
-          (println "\n📝 Starting SVG generation...")
+          (println "\n📝 Generating SVGs...")
           (let [generated (generate-all-svgs! context)]
-
             (when (seq generated)
-              ;; Generate HTML index if SVGs were created
-              (println "\n📄 Generating HTML index...")
-              (index/generate-index-with-output-dir!)
-
-              ;; Show final status
-              (println "\n📊 Final status:")
-              (index/print-svg-status!))
-
+              (println "\n📄 Generating index...")
+              (index/generate-index-with-output-dir!))
             (println "\n✅ Complete!")
             (System/exit 0)))
-
-        ;; No actionmaps found
         (do
-          (println "\n❌ ERROR: Could not load actionmaps!")
-          (println "Please check your Star Citizen installation")
-          (println "or set SC_ACTIONMAPS_PATH environment variable")
+          (println "\n❌ No actionmaps found!")
           (System/exit 1))))
 
     (catch Exception e
@@ -504,74 +298,41 @@
       (System/exit 2))))
 
 ;; =============================================================================
-;; Development REPL Helpers
+;; REPL Helpers
 ;; =============================================================================
 
 (comment
-  ;; Quick initialization for REPL
-  (def ctx (initialize-context))
+  ;; Initialize
+  (def ctx (state/build-context))
 
-  ;; Force reload everything
-  (def ctx (initialize-context :force-reload true))
+  ;; Check what we have
+  (:instances ctx)
+  ;; => {0 :alpha_RP, 1 :vpc_mongoose_t50cm3, ...}
 
-  ;; Skip SVGs for faster testing
-  (def ctx (initialize-context :skip-svgs true :force-reload true))
+  ;; Get display name
+  (svg-id->display-name ctx :alpha_RP)
+  (instance->display-name ctx 1)
 
-  ;; Status check
+  ;; Analyze
+  (analyze-instance ctx 1)
+
+  (summary ctx)
   (print-status! ctx)
 
-  ;; Get joystick info
-  (joystick-info ctx 2)
+  (find-unmapped-actions  (:actionmaps ctx))
 
-  ;; Get summary
-  (joystick-summary ctx)
+  (extract-all-mappings (:actionmaps ctx))
 
-  ;; Find unmapped actions
-  (find-empty-bindings (:actionmaps ctx))
-  (find-empty-bindings (:actionmaps ctx) :quantum)
+  (def mappings (instance-mappings (:actionmaps ctx) 1))
 
-  ;; Test action name cleaning
-  (clean-action-name "v_toggle_quantum_mode")
+  (update-svg-for-instance ctx 1)
 
-  ;; Extract all mappings for a joystick
-  (joystick-action-mappings (:actionmaps ctx) 5)
-
-  ;; Update single SVG in memory (no file I/O)
-  (update-svg-for-instance ctx 5)
-
-  (update-svg-for-instance ctx 2)
-
-  ;; Update all SVGs in memory
-  (def updated-svgs (update-all-svgs ctx))
-
-  (def svg (get-joystick-svg ctx 1))
-  (def mappings (joystick-action-mappings (:actionmaps ctx) 1))
-
-  (format-multi-action ["v_toggle_mining_laser_fire"
-                        "v_weapon_preset_attack"
-                        "v_quantum_activate_jump"]
-                       {:format-fn clean-action-name
-                        :separator "\n"})
-
-  (update-svg-from-mappings svg mappings)
-
-  ;; Generate single SVG file
-  (generate-svg-for-instance! ctx 5 "/tmp")
-
-  ;; Generate all SVG files
+  ;; Generate
+  (generate-svg! ctx 1 "/tmp")
   (generate-all-svgs! ctx "/tmp")
 
-  (find-multi-bound-buttons (joystick-action-mappings (:actionmaps ctx) 1))
+  ;; Test mappings
+  (def mappings (instance-mappings (:actionmaps ctx) 1))
 
-  (analyze-button-usage (joystick-action-mappings (:actionmaps ctx) 1))
-
-  ;; Full test run
-  (do
-    (def ctx (initialize-context :force-reload true))
-    (print-status! ctx)
-    (generate-all-svgs! ctx))
-
-  ;; Debug SVG rendering
-  (-> (update-svg-for-instance ctx 5)
-      render-svg
-      (spit "/tmp/debug.svg")))
+  ;; Update SVG in memory
+  (def updated (update-svg-for-instance ctx 1)))
