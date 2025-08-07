@@ -1,10 +1,10 @@
 (ns user
   (:require [nextjournal.clerk :as clerk]
             [nextjournal.clerk.viewer :as v]
-            [tupelo.string :as str]
+            [clojure.string :as str]
             [zprint.core :as z]))
 
-(clerk/serve! {:host "localhost" :browse true :watch-paths ["src"]})
+(comment (clerk/serve! {:host "localhost" :browse true :watch-paths ["src"]}))
 
 (def zprint-code-viewer
   {:name         `zprint-code-viewer

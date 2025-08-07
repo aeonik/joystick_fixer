@@ -22,11 +22,11 @@
            enlive/enlive                    {:mvn/version "1.1.6"}
            hickory/hickory {:mvn/version "RELEASE"}
            cljfx/cljfx {:mvn/version "RELEASE"}
-           thomasa/morpheus                 {:git/url "https://github.com/benedekfazekas/morpheus.git"
-                                             :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}}
+           io.github.cljfx/dev {:mvn/version "1.0.39"}}
 
  :aliases {:dev      {:extra-paths ["dev"]}
-           :morpheus {:extra-deps {thomasa/morpheus {:git/url "https://github.com/benedekfazekas/morpheus.git"
+           :morpheus {:extra-deps {io.github.cljfx/dev {:mvn/version "RELEASE"}
+                                   thomasa/morpheus {:git/url "https://github.com/benedekfazekas/morpheus.git"
                                                      :git/sha "6d7d8ccc1dd58ef2d4d9c781486303cf1082b899"}}
                       :main-opts  ["-m" "thomasa.morpheus.main"]}
            :build {:deps {io.github.clojure/tools.build {:mvn/version "0.9.4"}}
