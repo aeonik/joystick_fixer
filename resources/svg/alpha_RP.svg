@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg xmlns="http://www.w3.org/2000/svg" id="panel" viewBox="0 0 1341 948" version="1.1">
+<svg xmlns="http://www.w3.org/2000/svg" id="panel" version="1.1" viewBox="0 0 1341 948" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
   <script type="text/javascript" id="script1"><![CDATA[
           document.addEventListener("DOMContentLoaded", function() {
             console.log("SVG DOM ready!");
@@ -16,50 +16,59 @@
             });
           });
         ]]></script>
-  <style>
-    html,
-    body {
-      margin: 0;
-      height: 100%;
-      font-family: system-ui;
-    }
-    image {
-      pointer-events: none;
-    }
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    overflow: hidden;
+  }
 
-    /* boxes: invisible but mouse friendly */
-    .button-box {
-      fill: rgba(0, 255, 0, 0);
-      stroke: rgba(0, 255, 0, 0);
-      cursor: pointer;
-      transition: 0.15s;
-    }
-    .button-box:hover {
-      fill: rgba(0, 255, 0, 0.12);
-      stroke: rgba(0, 255, 0, 0.85);
-      stroke-width: 2;
-    }
-    .button-box.selected {
-      fill: rgba(255, 255, 0, 0.15);
-      stroke: rgba(255, 255, 0, 1);
-      stroke-width: 2;
-    }
-    .button-text {
-      pointer-events: none;
-      font-size: 10px;
-      font-weight: 500;
-      text-anchor: start;
-      dominant-baseline: middle;
-      fill: #444;
-      transform: translate(-50px, 0);
-    }
-    .button-text {
-      paint-order: stroke;
-      stroke: rgba(255, 255, 255, 1);
-      stroke-width: 4;
-    }
-  </style>
-  <image href="../resources/images/vpc_alpha_prime_R.png" x="0" y="0" width="1341" height="948" id="image1"/>
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  image {
+    pointer-events: none;
+  }
+
+  .button-box {
+    fill: rgba(0, 255, 0, 0);
+    stroke: rgba(0, 255, 0, 0);
+    cursor: pointer;
+    transition: 0.15s;
+  }
+
+  .button-box:hover {
+    fill: rgba(0, 255, 0, 0.12);
+    stroke: rgba(0, 255, 0, 0.85);
+    stroke-width: 2;
+  }
+
+  .button-box.selected {
+    fill: rgba(255, 255, 0, 0.15);
+    stroke: rgba(255, 255, 0, 1);
+    stroke-width: 2;
+  }
+
+  .button-text {
+    pointer-events: none;
+    font-size: 10px;
+    font-weight: 500;
+    text-anchor: start;
+    dominant-baseline: middle;
+    fill: #444;
+    transform: translate(-50px, 0);
+    paint-order: stroke;
+    stroke: rgba(255, 255, 255, 1);
+    stroke-width: 4;
+  }
+</style>
+  <image href="../resources/images/vpc_alpha_prime_R.png" x="0" y="0" width="1341" height="948" preserveAspectRatio="xMidYMid meet" id="image1"/>
   <g id="buttons">
     <rect class="button-box" rx="10" ry="10" x="946.91998" y="332.23001" width="105.33" height="44.860001" id="button1"/>
     <rect class="button-box" rx="10" ry="10" x="946.72998" y="384.89001" width="105.33" height="44.860001" id="button2"/>
@@ -194,7 +203,7 @@
     <text class="button-text" id="lbl_button31" data-for="button31" x="794.14001" y="895">
       .
     </text>
-    <text class="button-text" id="lbl_button32" data-for="button32" x="788.85999" y="547.745">
+    <text class="button-text" id="lbl_button32" data-for="button32" x="798.85999" y="547.745">
       .
     </text>
     <text class="button-text" id="lbl_button33" data-for="x" x="1232.76" y="453.20001">
