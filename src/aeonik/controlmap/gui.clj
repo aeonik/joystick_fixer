@@ -366,6 +366,7 @@
 
   ;; Check context
   (keys (:svg-roots (:context @gui-state)))
+  (:panel_3 (:svg-roots (:context @gui-state)))
 
   ;; Check unmapped actions
   (count (:unmapped-actions @gui-state))
