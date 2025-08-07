@@ -15,11 +15,14 @@
     (spit launcher-path contents)))
 
 (defn zip-artifacts [_]
-  (let [zip-file "target/control_mapper.zip"
+  (let [zip-file "control_mapper.zip"
         target-dir (io/file "target")]
     (println "📦 Zipping target/* into" zip-file "...")
     (b/zip {:src-dirs [(.getPath target-dir)]
             :zip-file zip-file})
+    (b/copy-file {:src zip-file
+                  :target (str "target/" zip-file)})
+    (b/delete {:path zip-file})
     (println "✅ Zip complete! └─" zip-file)))
 
 (defn clean [_]
