@@ -11,180 +11,182 @@
   (:gen-class))
 
 ;; =============================================================================
-;; Context Initialization
+;; Non-reactive Image Cache
 ;; =============================================================================
 
-(defn prepare-context [context]
-  (let [updated-svgs (core/update-all-svgs context)
-        ;; Build once per instance-id
-        html-by-id (into {}
-                         (map (fn [[iid svg-tree]]
-                                [iid (svg/svg-tree->html-string svg-tree)]))
-                         updated-svgs)
-        data-url-by-id (into {}
-                             (map (fn [[iid html]]
-                                    [iid (svg/html->data-url html)]))
-                             html-by-id)]
-    (assoc context
-           :display-svgs updated-svgs
-           :html-by-id html-by-id
-           :data-url-by-id data-url-by-id)))
+(defonce *image-cache
+  (atom {:display-svgs {}
+         :html-by-id {}
+         :data-url-by-id {}}))
 
 ;; =============================================================================
-;; Global UI State
+;; Initial State
 ;; =============================================================================
 
-(defonce gui-state (atom nil))
-
-(defn initialize-gui-state! []
-  (let [context (prepare-context (state/get-context))
+(defn create-initial-state []
+  (let [context (state/get-context)
+        svgs (core/update-all-svgs context)
+        htmls (into {} (map (fn [[iid svg]] [iid (svg/svg-tree->html-string svg)])) svgs)
+        urls (into {} (map (fn [[iid html]] [iid (svg/html->data-url html)])) htmls)
+        _ (reset! *image-cache {:display-svgs svgs
+                                :html-by-id htmls
+                                :data-url-by-id urls})
         available-svgs (set (keys (:svgs context)))
-        instances-with-svgs (->> (:instances context)
-                                 (filter (fn [[_ svg-id]] (contains? available-svgs svg-id)))
-                                 (into []))
+        instances (->> (:instances context)
+                       (filter (fn [[_ svg-id]] (contains? available-svgs svg-id)))
+                       (into []))
         unmapped (core/find-unmapped-actions (:actionmaps context))
-        active (some-> instances-with-svgs first first)]
-    (reset! gui-state
-            {:context context
-             :instances instances-with-svgs
-             :active-instance active
-             :status nil
-             :filter-text ""
-             :unmapped-actions unmapped
-             :show-unmapped? true})))
+        active (some-> instances first first)]
+    {:context context
+     :instances instances
+     :active-instance active
+     :status nil
+     :filter-text ""
+     :unmapped-actions unmapped
+     :show-unmapped? true}))
 
-(defn reload-context! []
-  (println "Reloading context...")
-  (try
-    (state/init!)
-    (initialize-gui-state!)
-    (println "Context reloaded successfully!")
-    true
-    (catch Exception e
-      (println "Error reloading context:" (.getMessage e))
-      false)))
+(def *state (atom (create-initial-state)))
+
+;; =============================================================================
+;; Computed Values
+;; =============================================================================
+
+(defn filtered-unmapped-actions [state]
+  (let [ft (str/lower-case (or (:filter-text state) ""))]
+    (if (str/blank? ft)
+      (:unmapped-actions state)
+      (filterv #(str/includes? (str/lower-case %) ft)
+               (:unmapped-actions state)))))
+
+;; =============================================================================
+;; Event Handling
+;; =============================================================================
+
+(defn map-event-handler [event]
+  (case (:event/type event)
+    ::set-status (fn [state]
+                   (let [^WebEvent we (:fx/event event)
+                         msg (.getData we)]
+                     (println "⚡ SVG clicked:" msg)
+                     (assoc state :status msg)))
+    ::set-filter-text #(assoc % :filter-text (:fx/event event))
+    ::toggle-unmapped #(update % :show-unmapped? not)
+    ::set-active-instance (fn [state]
+                            (if (:fx/event event)
+                              (assoc state :active-instance (:instance-id event))
+                              state))
+    ::reload-context (fn [_]
+                       (println "Reloading context...")
+                       (try
+                         (state/init!)
+                         (create-initial-state)
+                         (catch Exception e
+                           (println "Error reloading context:" (.getMessage e))
+                           @*state)))
+    ::export-svgs (fn [state]
+                    (println "Generating SVGs...")
+                    (core/generate-all-svgs! (:context state))
+                    (println "SVGs generated!")
+                    state)
+    identity))
 
 ;; =============================================================================
 ;; UI Components
 ;; =============================================================================
 
-(defn unmapped-actions-panel [{:keys [unmapped-actions filter-text]}]
-  (let [ft (str/lower-case (or filter-text ""))
-        filtered (if (str/blank? ft)
-                   unmapped-actions
-                   (filterv #(str/includes? (str/lower-case %) ft)
-                            unmapped-actions))]
+(defn unmapped-actions-panel [state]
+  (let [filtered (filtered-unmapped-actions state)]
     {:fx/type :v-box
-     :spacing 10 :padding 10 :min-width 300 :pref-width 350
+     :spacing 10
+     :padding 10
+     :min-width 300
+     :pref-width 350
      :children
      [{:fx/type :label
        :text "Unmapped Actions"
        :style "-fx-font-size: 16px; -fx-font-weight: bold;"}
       {:fx/type :label
-       :text (format "%d total, %d shown" (count unmapped-actions) (count filtered))
+       :text (format "%d total, %d shown" (count (:unmapped-actions state)) (count filtered))
        :style "-fx-text-fill: gray;"}
       {:fx/type :text-field
        :prompt-text "Filter actions..."
-       :text filter-text
-       :on-text-changed #(swap! gui-state assoc :filter-text %)}
-      ;; optional: wrap with scroll-pane; ListView can scroll itself too
+       :text (:filter-text state)
+       :on-text-changed {:event/type ::set-filter-text}}
       {:fx/type :list-view
+       :v-box/vgrow :always
        :items (mapv core/clean-action-name filtered)}]}))
 
 (defn instance-tab [{:keys [instance-id svg-id display-name data-url]}]
   {:fx/type :tab
-   :fx/key [:tab instance-id]     ; stable key!
    :text (format "[%d] %s" instance-id display-name)
    :closable false
-   :on-selection-changed
-   (fn [e]
-     (let [^javafx.scene.control.Tab tab (.getSource e)]
-       (when (.isSelected tab)
-         (swap! gui-state assoc :active-instance instance-id))))
-   :content
-   {:fx/type fx.ext.web-view/with-engine-props
-    :desc {:fx/type :web-view
-           :pref-width 800 :pref-height 600}
-    :props {:url data-url
-            :on-status-changed
-            (fn [^WebEvent evt]
-              ;; optionally throttle, or only keep the last string
-              (swap! gui-state assoc :status (.getData evt)))}}})
+   :on-selection-changed {:event/type ::set-active-instance :instance-id instance-id}
+   :content {:fx/type fx.ext.web-view/with-engine-props
+             :desc {:fx/type :web-view
+                    :pref-width 800
+                    :pref-height 600}
+             :props {:url data-url
+                     :on-status-changed {:event/type ::set-status}}}})
 
-(defn svg-tab-pane [{:keys [context instances active-instance]}]
-  {:fx/type :tab-pane
-   :h-box/hgrow :always
-   :tab-closing-policy :unavailable
-   :tabs
-   (mapv (fn [[instance-id svg-id]]
-           (instance-tab {:instance-id instance-id
-                          :svg-id svg-id
-                          :display-name (core/svg-id->display-name context svg-id)
-                          :data-url (get-in context [:data-url-by-id instance-id])}))
-         instances)})
+(defn svg-tab-pane [state]
+  (let [context (:context state)
+        cache @*image-cache]
+    {:fx/type :tab-pane
+     :h-box/hgrow :always
+     :tab-closing-policy :unavailable
+     :tabs (mapv (fn [[instance-id svg-id]]
+                   {:fx/type instance-tab
+                    :instance-id instance-id
+                    :svg-id svg-id
+                    :display-name (core/svg-id->display-name context svg-id)
+                    :data-url (get-in cache [:data-url-by-id instance-id])})
+                 (:instances state))}))
 
-(defn control-toolbar [{:keys [show-unmapped? instance-count]}]
+(defn control-toolbar [state]
   {:fx/type :tool-bar
    :items
    [{:fx/type :button
      :text "🔄 Reload"
      :tooltip {:fx/type :tooltip :text "Reload all mappings"}
-     :on-action (fn [_] (reload-context!))}
+     :on-action {:event/type ::reload-context}}
     {:fx/type :separator}
     {:fx/type :toggle-button
      :text "📋 Unmapped"
-     :selected show-unmapped?
+     :selected (boolean (:show-unmapped? state))
      :tooltip {:fx/type :tooltip :text "Show/hide unmapped actions"}
-     :on-action #(swap! gui-state update :show-unmapped? not)}
+     :on-action {:event/type ::toggle-unmapped}}
     {:fx/type :separator}
     {:fx/type :button
-     :text "💾 Export SVGs"
+     :text "📂 Export SVGs"
      :tooltip {:fx/type :tooltip :text "Generate SVG files"}
-     :on-action (fn [_]
-                  (println "Generating SVGs...")
-                  (core/generate-all-svgs! (:context @gui-state))
-                  (println "SVGs generated!"))}
+     :on-action {:event/type ::export-svgs}}
     {:fx/type :separator}
     {:fx/type :label
-     :text (format "Instances: %d" instance-count)}]})
+     :text (format "Instances: %d" (count (:instances state)))}]})
 
 ;; =============================================================================
-;; Main View
+;; Root View
 ;; =============================================================================
 
-(defn root-view [{:keys [context instances active-instance unmapped-actions
-                         filter-text show-unmapped?] :as state}]
-  (if (nil? state)
-    {:fx/type :stage
-     :showing true
-     :title "ControlMap - Loading..."
-     :width 400 :height 200
-     :scene {:fx/type :scene
-             :root {:fx/type :v-box
-                    :alignment :center
-                    :children [{:fx/type :label
-                                :text "Loading ControlMap..."
-                                :style "-fx-font-size: 18px;"}]}}}
-    (let [instance-count (count instances)]
-      {:fx/type :stage
-       :showing true
-       :title (format "ControlMap - Instance %s" (or active-instance "None"))
-       :width 1400 :height 900
-       :scene {:fx/type :scene
-               :root {:fx/type :v-box
-                      :children
-                      [(control-toolbar {:show-unmapped? show-unmapped?
-                                         :instance-count instance-count})
-                       {:fx/type :h-box
-                        :v-box/vgrow :always
-                        :spacing 10 :padding 10
-                        :children
-                        (cond-> [(svg-tab-pane {:context context
-                                                :instances instances
-                                                :active-instance active-instance})]
-                          show-unmapped?
-                          (conj (unmapped-actions-panel {:unmapped-actions unmapped-actions
-                                                         :filter-text filter-text})))}]}}})))
+(defn root-view [state]
+  {:fx/type :stage
+   :showing true
+   :title (format "ControlMap - Instance %s" (or (:active-instance state) "None"))
+   :width 1400
+   :height 900
+   :scene {:fx/type :scene
+           :root {:fx/type :v-box
+                  :children
+                  [(control-toolbar state)
+                   {:fx/type :h-box
+                    :v-box/vgrow :always
+                    :spacing 10
+                    :padding 10
+                    :children
+                    (vec
+                     (cond-> [(svg-tab-pane state)]
+                       (:show-unmapped? state)
+                       (conj (assoc (unmapped-actions-panel state) :h-box/hgrow :never))))}]}}})
 
 ;; =============================================================================
 ;; Application Lifecycle
@@ -192,58 +194,21 @@
 
 (def renderer
   (fx/create-renderer
-   :middleware (fx/wrap-map-desc #'root-view)))
+   :middleware (fx/wrap-map-desc root-view)
+   :opts {:fx.opt/map-event-handler
+          (fn [event]
+            (swap! *state (map-event-handler event)))}))
 
-(defn start!
-  "Starts the GUI"
-  []
-  (when (nil? @gui-state)
-    (initialize-gui-state!))
-  (fx/mount-renderer gui-state renderer)
-  (println "✓ GUI started"))
+(defn start! []
+  (fx/mount-renderer *state renderer))
 
-(defn stop!
-  "Stops the GUI"
-  []
-  (fx/unmount-renderer gui-state renderer)
-  (println "✓ GUI stopped"))
+(defn stop! []
+  (fx/unmount-renderer *state renderer)
+  (println "\u2713 GUI stopped"))
 
-(defn restart!
-  "Restarts the GUI"
-  []
+(defn restart! []
   (stop!)
   (Thread/sleep 100)
   (start!))
 
-(defn -main
-  "Main entry point"
-  [& args]
-  (start!))
-
-;; =============================================================================
-;; REPL Helpers
-;; =============================================================================
-
-(comment
-  ;; Start/stop
-  (start!)
-  (stop!)
-  (restart!)
-
-  ;; Reload data
-  (reload-context!)
-
-  ;; Check state
-  @gui-state
-  (:instances @gui-state)
-
-  ;; Check what's loaded
-  (-> @gui-state :context :instances)
-  ;; => {0 :alpha_RP, 1 :vpc_mongoose_t50cm3, ...}
-
-  ;; Check display SVGs
-  (-> @gui-state :context :display-svgs keys)
-
-  ;; Debug specific instance
-  (let [ctx (:context @gui-state)]
-    (core/analyze-instance ctx 0)))
+(defn -main [& _] (start!))
