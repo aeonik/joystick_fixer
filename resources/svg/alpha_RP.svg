@@ -16,7 +16,7 @@
             });
           });
         ]]></script>
-<style>
+  <style>
   html, body {
     margin: 0;
     padding: 0;
@@ -101,7 +101,7 @@
     <rect class="button-box" rx="10" ry="10" x="1159.29" y="226.23999" width="105.33" height="44.860001" id="button29"/>
     <rect class="button-box" rx="10" ry="10" x="1159.97" y="331.09998" width="105.33" height="44.860001" id="button30"/>
     <rect class="button-box" rx="10" ry="10" x="741.46997" y="872.57001" width="105.33" height="44.860001" id="button31"/>
-    <rect class="button-box" rx="10" ry="10" x="740" y="524" width="105.33" height="44.860001" id="x-2"/>
+    <rect class="button-box" rx="10" ry="10" x="740" y="524" width="105.33" height="44.860001" id="button32"/>
     <rect class="button-box" rx="10" ry="10" x="1180.0901" y="430.77002" width="105.33" height="44.860001" id="x"/>
     <rect class="button-box" rx="10" ry="10" x="1180.0901" y="477.58002" width="105.33" height="44.860001" id="y"/>
     <rect class="button-box" rx="10" ry="10" x="247.42999" y="734.63" width="105.33" height="44.860001" id="z"/>
