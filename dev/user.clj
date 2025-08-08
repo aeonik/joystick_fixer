@@ -13,3 +13,11 @@
    :transform-fn (comp v/mark-presented
                        #(update-in % [:nextjournal/render-opts :language] (fn [lang] (or lang "clojure")))
                        (clerk/update-val (fn [v] (str/trim (with-out-str (z/zprint v {:map {:comma? true :indent 0 :justify? true}}))))))})
+
+(require '[clj-async-profiler.core :as prof])
+(prof/serve-ui 8080)
+
+(comment
+  (prof/start)
+
+  (prof/stop))
