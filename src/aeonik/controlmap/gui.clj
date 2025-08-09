@@ -3,15 +3,33 @@
   (:require
    [clojure.string :as str]
    [cljfx.api :as fx]
+   [clojure.java.io :as io]
    [cljfx.ext.web-view :as fx.ext.web-view]
    [aeonik.controlmap.core :as core]
    [aeonik.controlmap.state :as state]
    [aeonik.controlmap.svg :as svg])
-  (:import [javafx.scene.web WebEvent])
+  (:import [javafx.scene.web WebEvent]
+           [java.awt Taskbar Taskbar$Feature]
+           [javax.imageio ImageIO])
   (:gen-class))
 
-(def joystick-icon
-  (javafx.scene.image.Image. "images/gui_icon3_transparent.png"))
+(when (.startsWith (System/getProperty "os.name" "") "Mac")
+  (System/setProperty "apple.awt.application.name" "Control Mapper"))
+
+(def joystick-icon-path "images/gui_icon3.png")
+(def joystick-icon (javafx.scene.image.Image. joystick-icon-path))
+
+(defn set-macos-dock-icon! []
+  (when (and (.startsWith (System/getProperty "os.name" "") "Mac")
+             (Taskbar/isTaskbarSupported)
+             (.isSupported (Taskbar/getTaskbar) Taskbar$Feature/ICON_IMAGE))
+    (try
+      (with-open [in (or (some-> (io/resource joystick-icon-path) io/input-stream)
+                         (io/input-stream (io/file joystick-icon-path)))]
+        (let [awt (ImageIO/read in)]
+          (.setIconImage (Taskbar/getTaskbar) awt)))
+      (catch Throwable t
+        (println "Dock icon set failed:" (.getMessage t))))))
 
 ;; =============================================================================
 ;; Context Initialization
@@ -169,7 +187,7 @@
   (if (nil? state)
     {:fx/type :stage
      :showing true
-     :title "ControlMap - Loading..."
+     :title "Control Mapper - Loading..."
      :width 400 :height 200
      :scene {:fx/type :scene
              :root {:fx/type :v-box
@@ -180,7 +198,7 @@
     (let [instance-count (count instances)]
       {:fx/type :stage
        :showing true
-       :title (format "ControlMap - Instance %s" (or active-instance "None"))
+       :title (format "Control Mapper - Instance %s" (or active-instance "None"))
        :width 1400 :height 900
        :icons [joystick-icon]
        :scene {:fx/type :scene
@@ -207,13 +225,21 @@
   (fx/create-renderer
    :middleware (fx/wrap-map-desc #'root-view)))
 
+(defn start! []
+  (when (nil? @gui-state)
+    (initialize-gui-state!))
+  (fx/mount-renderer gui-state renderer)
+  (println "✓ GUI started")
+  ())
+
 (defn start!
   "Starts the GUI"
   []
   (when (nil? @gui-state)
     (initialize-gui-state!))
   (fx/mount-renderer gui-state renderer)
-  (println "✓ GUI started"))
+  (println "✓ GUI started")
+  (set-macos-dock-icon!))
 
 (defn stop!
   "Stops the GUI"
