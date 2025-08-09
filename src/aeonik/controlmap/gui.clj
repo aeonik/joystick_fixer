@@ -6,9 +6,15 @@
    [cljfx.ext.web-view :as fx.ext.web-view]
    [aeonik.controlmap.core :as core]
    [aeonik.controlmap.state :as state]
-   [aeonik.controlmap.svg :as svg])
-  (:import [javafx.scene.web WebEvent])
+   [aeonik.controlmap.svg :as svg]
+   [clojure.java.io :as io])
+  (:import
+   [javafx.scene.image Image]
+   [javafx.scene.web WebEvent])
   (:gen-class))
+
+(def joystick-icon
+  (javafx.scene.image.Image. "images/gui_icon3_transparent.png"))
 
 ;; =============================================================================
 ;; Non-reactive Image Cache
@@ -171,9 +177,10 @@
 (defn root-view [state]
   {:fx/type :stage
    :showing true
-   :title (format "ControlMap - Instance %s" (or (:active-instance state) "None"))
+   :title (format "Control Mapper - Instance %s" (or (:active-instance state) "None"))
    :width 1400
    :height 900
+   :icons [joystick-icon]
    :scene {:fx/type :scene
            :root {:fx/type :v-box
                   :children
