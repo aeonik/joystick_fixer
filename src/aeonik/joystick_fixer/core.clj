@@ -7,8 +7,7 @@
             [clojure.pprint :refer [pprint]]
             [clojure.tools.reader.edn :as edn]
             [editscript.core :as e]
-            [malli.core :as m]
-            [tupelo.core :refer :all])
+            [malli.core :as m])
   (:import (clojure.lang Keyword)
            (java.io File)
            [java.nio.file Files Paths]
