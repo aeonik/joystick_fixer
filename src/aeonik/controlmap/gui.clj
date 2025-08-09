@@ -14,17 +14,31 @@
 ;; Context Initialization
 ;; =============================================================================
 
+;; Inline version
+(comment (defn prepare-context [context]
+           (let [base (state/get-context)
+                 svgs (core/update-all-svgs base)
+                 base-path (System/getProperty "user.dir") ; or wherever your images are relative to
+                 svg-strings (into {}
+                                   (map (fn [[k svg]]
+                                          [k (-> svg
+                                                 (svg/inline-images base-path) ; Inline the images first
+                                                 svg/hickory->svg-string)]) ; Then convert to string
+                                        svgs))]
+             (assoc base :svgs svg-strings))))
+
 (defn prepare-context [context]
   (let [base (state/get-context)
         svgs (core/update-all-svgs base)
-        base-path (System/getProperty "user.dir") ; or wherever your images are relative to
+        base-path (System/getProperty "user.dir")
         svg-strings (into {}
                           (map (fn [[k svg]]
                                  [k (-> svg
-                                        (svg/inline-images base-path)  ; Inline the images first
-                                        svg/hickory->svg-string)])     ; Then convert to string
+                                        (svg/make-urls-absolute base-path)
+                                        svg/hickory->svg-string)])
                                svgs))]
     (assoc base :svgs svg-strings)))
+
 ;; =============================================================================
 ;; Global UI State
 ;; =============================================================================
