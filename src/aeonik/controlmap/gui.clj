@@ -10,6 +10,9 @@
   (:import [javafx.scene.web WebEvent])
   (:gen-class))
 
+(def joystick-icon
+  (javafx.scene.image.Image. "images/gui_icon3_transparent.png"))
+
 ;; =============================================================================
 ;; Context Initialization
 ;; =============================================================================
@@ -179,6 +182,7 @@
        :showing true
        :title (format "ControlMap - Instance %s" (or active-instance "None"))
        :width 1400 :height 900
+       :icons [joystick-icon]
        :scene {:fx/type :scene
                :root {:fx/type :v-box
                       :children
