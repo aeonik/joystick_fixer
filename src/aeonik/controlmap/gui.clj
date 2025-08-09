@@ -15,21 +15,16 @@
 ;; =============================================================================
 
 (defn prepare-context [context]
-  (let [updated-svgs (core/update-all-svgs context)
-        ;; Build once per instance-id
-        html-by-id (into {}
-                         (map (fn [[iid svg-tree]]
-                                [iid (svg/svg-tree->html-string svg-tree)]))
-                         updated-svgs)
-        data-url-by-id (into {}
-                             (map (fn [[iid html]]
-                                    [iid (svg/html->data-url html)]))
-                             html-by-id)]
-    (assoc context
-           :display-svgs updated-svgs
-           :html-by-id html-by-id
-           :data-url-by-id data-url-by-id)))
-
+  (let [base (state/get-context)
+        svgs (core/update-all-svgs base)
+        base-path (System/getProperty "user.dir") ; or wherever your images are relative to
+        svg-strings (into {}
+                          (map (fn [[k svg]]
+                                 [k (-> svg
+                                        (svg/inline-images base-path)  ; Inline the images first
+                                        svg/hickory->svg-string)])     ; Then convert to string
+                               svgs))]
+    (assoc base :svgs svg-strings)))
 ;; =============================================================================
 ;; Global UI State
 ;; =============================================================================
@@ -91,7 +86,7 @@
       {:fx/type :list-view
        :items (mapv core/clean-action-name filtered)}]}))
 
-(defn instance-tab [{:keys [instance-id svg-id display-name data-url]}]
+(defn instance-tab [{:keys [instance-id svg-id display-name svg]}]
   {:fx/type :tab
    :fx/key [:tab instance-id]     ; stable key!
    :text (format "[%d] %s" instance-id display-name)
@@ -105,7 +100,7 @@
    {:fx/type fx.ext.web-view/with-engine-props
     :desc {:fx/type :web-view
            :pref-width 800 :pref-height 600}
-    :props {:url data-url
+    :props {:content svg
             :on-status-changed
             (fn [^WebEvent evt]
               ;; optionally throttle, or only keep the last string
@@ -120,7 +115,7 @@
            (instance-tab {:instance-id instance-id
                           :svg-id svg-id
                           :display-name (core/svg-id->display-name context svg-id)
-                          :data-url (get-in context [:data-url-by-id instance-id])}))
+                          :svg (get-in context [:svgs svg-id])}))
          instances)})
 
 (defn control-toolbar [{:keys [show-unmapped? instance-count]}]
