@@ -219,3 +219,8 @@
   (start!))
 
 (defn -main [& _] (start!))
+
+(comment
+  (start!)
+  (stop!)
+  (restart!))
