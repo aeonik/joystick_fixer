@@ -3,18 +3,35 @@
   (:require
    [clojure.string :as str]
    [cljfx.api :as fx]
+   [clojure.java.io :as io]  ; Add this import
    [cljfx.ext.web-view :as fx.ext.web-view]
    [aeonik.controlmap.core :as core]
    [aeonik.controlmap.state :as state]
-   [aeonik.controlmap.svg :as svg]
-   [clojure.java.io :as io])
+   [aeonik.controlmap.svg :as svg])
   (:import
    [javafx.scene.image Image]
-   [javafx.scene.web WebEvent])
+   [javafx.scene.web WebEvent]
+   [java.awt Taskbar Taskbar$Feature]    ; Add these imports
+   [javax.imageio ImageIO])
   (:gen-class))
 
-(def joystick-icon
-  (javafx.scene.image.Image. "images/gui_icon3_transparent.png"))
+(when (.startsWith (System/getProperty "os.name" "") "Mac")
+  (System/setProperty "apple.awt.application.name" "Control Mapper"))
+
+(def joystick-icon-path "images/gui_icon3.png")
+(def joystick-icon (javafx.scene.image.Image. joystick-icon-path))
+
+(defn set-macos-dock-icon! []
+  (when (and (.startsWith (System/getProperty "os.name" "") "Mac")
+             (Taskbar/isTaskbarSupported)
+             (.isSupported (Taskbar/getTaskbar) Taskbar$Feature/ICON_IMAGE))
+    (try
+      (with-open [in (or (some-> (io/resource joystick-icon-path) io/input-stream)
+                         (io/input-stream (io/file joystick-icon-path)))]
+        (let [awt (ImageIO/read in)]
+          (.setIconImage (Taskbar/getTaskbar) awt)))
+      (catch Throwable t
+        (println "Dock icon set failed:" (.getMessage t))))))
 
 (defn prepare-context [context]
   (let [base (state/get-context)
@@ -204,7 +221,8 @@
             (swap! *state (map-event-handler event)))}))
 
 (defn start! []
-  (fx/mount-renderer *state renderer))
+  (fx/mount-renderer *state renderer)
+  (set-macos-dock-icon!)   (println "✓ GUI started"))
 
 (defn stop! []
   (fx/unmount-renderer *state renderer)
