@@ -138,6 +138,7 @@
      :tab-closing-policy :unavailable
      :tabs (mapv (fn [[instance-id svg-id]]
                    {:fx/type instance-tab
+                    :fx/key instance-id
                     :instance-id instance-id
                     :svg-id svg-id
                     :display-name (core/svg-id->display-name context svg-id)
