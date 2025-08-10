@@ -148,10 +148,10 @@
   "Updates all SVGs with their mappings"
   [context]
   (into {}
-        (keep (fn [instance-id]
-                (when-let [updated (svg/inline-images (update-svg-for-instance context instance-id))]
-                  [instance-id updated]))
-              (keys (:instances context)))))
+        (keep (fn [[instance-id joystick-id]]
+                (when-let [updated (update-svg-for-instance context instance-id)]
+                  [joystick-id updated]))
+              (:instances context))))
 
 ;; =============================================================================
 ;; File I/O

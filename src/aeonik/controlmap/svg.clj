@@ -348,6 +348,27 @@
                 (.getParentFile base-file))
               clean-relative))))
 
+(defn make-urls-absolute
+  "Converts all relative image URLs to absolute file:// URLs"
+  [hickory-tree base-path]
+  (update-nodes hickory-tree
+                (s/and (s/tag :image)
+                       (s/or (s/attr :href #(and %
+                                                 (not (str/starts-with? % "data:"))
+                                                 (not (str/starts-with? % "http"))
+                                                 (not (str/starts-with? % "file:"))))
+                             (s/attr :xlink:href #(and %
+                                                       (not (str/starts-with? % "data:"))
+                                                       (not (str/starts-with? % "http"))
+                                                       (not (str/starts-with? % "file:"))))))
+                (fn [image-node]
+                  (let [href (or (get-in image-node [:attrs :href])
+                                 (get-in image-node [:attrs :xlink:href]))
+                        resolved-path (resolve-relative-path href base-path)
+                        absolute-url (str "file://" resolved-path)]
+                    (-> image-node
+                        (assoc-in [:attrs :href] absolute-url))))))
+
 ;; =============================================================================
 ;; SVG Image Inlining
 ;; =============================================================================

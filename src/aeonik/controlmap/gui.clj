@@ -16,35 +16,32 @@
 (def joystick-icon
   (javafx.scene.image.Image. "images/gui_icon3_transparent.png"))
 
-;; =============================================================================
-;; Non-reactive Image Cache
-;; =============================================================================
-
-(defonce *image-cache
-  (atom {:display-svgs {}
-         :html-by-id {}
-         :data-url-by-id {}}))
+(defn prepare-context [context]
+  (let [base (state/get-context)
+        svgs (core/update-all-svgs base)
+        base-path (System/getProperty "user.dir")
+        svg-strings (into {}
+                          (map (fn [[k svg]]
+                                 [k (-> svg
+                                        (svg/make-urls-absolute base-path)
+                                        svg/hickory->svg-string)])
+                               svgs))]
+    (assoc base :svgs svg-strings)))
 
 ;; =============================================================================
 ;; Initial State
 ;; =============================================================================
 
 (defn create-initial-state []
-  (let [context (state/get-context)
-        svgs (core/update-all-svgs context)
-        htmls (into {} (map (fn [[iid svg]] [iid (svg/svg-tree->html-string svg)])) svgs)
-        urls (into {} (map (fn [[iid html]] [iid (svg/html->data-url html)])) htmls)
-        _ (reset! *image-cache {:display-svgs svgs
-                                :html-by-id htmls
-                                :data-url-by-id urls})
+  (let [context (prepare-context (state/get-context))
         available-svgs (set (keys (:svgs context)))
-        instances (->> (:instances context)
-                       (filter (fn [[_ svg-id]] (contains? available-svgs svg-id)))
-                       (into []))
+        instances-with-svgs (->> (:instances context)
+                                 (filter (fn [[_ svg-id]] (contains? available-svgs svg-id)))
+                                 (into []))
         unmapped (core/find-unmapped-actions (:actionmaps context))
-        active (some-> instances first first)]
+        active (some-> instances-with-svgs first first)]
     {:context context
-     :instances instances
+     :instances instances-with-svgs
      :active-instance active
      :status nil
      :filter-text ""
@@ -122,7 +119,7 @@
        :v-box/vgrow :always
        :items (mapv core/clean-action-name filtered)}]}))
 
-(defn instance-tab [{:keys [instance-id svg-id display-name data-url]}]
+(defn instance-tab [{:keys [instance-id svg-id display-name svg]}]
   {:fx/type :tab
    :text (format "[%d] %s" instance-id display-name)
    :closable false
@@ -131,12 +128,11 @@
              :desc {:fx/type :web-view
                     :pref-width 800
                     :pref-height 600}
-             :props {:url data-url
+             :props {:content svg
                      :on-status-changed {:event/type ::set-status}}}})
 
 (defn svg-tab-pane [state]
-  (let [context (:context state)
-        cache @*image-cache]
+  (let [{:keys [context instances active-instance]} state]
     {:fx/type :tab-pane
      :h-box/hgrow :always
      :tab-closing-policy :unavailable
@@ -145,8 +141,8 @@
                     :instance-id instance-id
                     :svg-id svg-id
                     :display-name (core/svg-id->display-name context svg-id)
-                    :data-url (get-in cache [:data-url-by-id instance-id])})
-                 (:instances state))}))
+                    :svg (get-in context [:svgs svg-id])})
+                 instances)}))
 
 (defn control-toolbar [state]
   {:fx/type :tool-bar
