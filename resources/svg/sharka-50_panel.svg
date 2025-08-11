@@ -1,0 +1,281 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" id="panel" viewBox="0 0 1341 948">
+  <script type="text/javascript"><![CDATA[
+          document.addEventListener("DOMContentLoaded", function() {
+            console.log("SVG DOM ready!");
+
+            const buttons = document.querySelectorAll('.button-box');
+
+            buttons.forEach(function(button) {
+              button.style.cursor = 'pointer';
+              button.addEventListener('click', function() {
+                const message = "clicked:" + button.id;
+                console.log(message);
+                window.status = message;
+              });
+            });
+          });
+        ]]></script>
+  <style id="style1">
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            overflow: hidden;
+        }
+
+        svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        image {
+            pointer-events: none;
+        }
+
+        .button-box {
+            fill: rgba(0, 255, 0, 0);
+            stroke: rgba(0, 255, 0, 0);
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .button-box:hover {
+            fill: rgba(0, 255, 0, 0.12);
+            stroke: rgba(0, 255, 0, 0.85);
+            stroke-width: 2;
+        }
+
+        .button-box.selected {
+            fill: rgba(255, 255, 0, 0.15);
+            stroke: rgba(255, 255, 0, 1);
+            stroke-width: 2;
+        }
+
+        .button-text {
+            pointer-events: none;
+            font-size: 10px;
+            font-weight: 500;
+            text-anchor: start;
+            dominant-baseline: middle;
+            fill: #444;
+            transform: translate(-35px, 0);
+            paint-order: stroke;
+            stroke: rgba(255, 255, 255, 1);
+            stroke-width: 4;
+        }
+    </style>
+  <image href="../resources/images/vpc_sharka_panel.png" x="0" y="0" width="1341" height="948" id="image1"/>
+  <g id="buttons">
+    <rect class="button-box" rx="15" ry="15" x="201.08533" y="130.50633" width="138" height="46" id="button1"/>
+    <rect class="button-box" rx="15" ry="15" x="344.81488" y="130.97" width="138" height="46" id="button2"/>
+    <rect class="button-box" rx="15" ry="15" x="524.30151" y="130.72073" width="138" height="46" id="button3"/>
+    <rect class="button-box" rx="15" ry="15" x="667.94885" y="130.69629" width="138" height="46" id="button4"/>
+    <rect class="button-box" rx="15" ry="15" x="811.95349" y="130.71896" width="138" height="46" id="button5"/>
+    <rect class="button-box" rx="15" ry="15" x="200.97516" y="183.33241" width="138" height="46" id="button6"/>
+    <rect class="button-box" rx="15" ry="15" x="345.4404" y="183.54448" width="138" height="46" id="button7"/>
+    <rect class="button-box" rx="15" ry="15" x="1172.6049" y="515.46838" width="138" height="46" id="button8"/>
+    <rect class="button-box" rx="15" ry="15" x="885.19763" y="515.46838" width="138" height="46" id="button9"/>
+    <rect class="button-box" rx="15" ry="15" x="961.56885" y="272.80936" width="138" height="46" id="button10"/>
+    <rect class="button-box" rx="15" ry="15" x="962.03998" y="378.36853" width="138" height="46" id="button11"/>
+    <rect class="button-box" rx="15" ry="15" x="1174.5057" y="378.77344" width="138" height="46" id="button12"/>
+    <rect class="button-box" rx="15" ry="15" x="1175.2296" y="432.1217" width="138" height="46" id="button13"/>
+    <rect class="button-box" rx="15" ry="15" x="57.003719" y="268.59549" width="138" height="46" id="button14"/>
+    <rect class="button-box" rx="15" ry="15" x="56.60503" y="321.65585" width="138" height="46" id="button15"/>
+    <rect class="button-box" rx="15" ry="15" x="201.08658" y="266.9245" width="138" height="46" id="button16"/>
+    <rect class="button-box" rx="15" ry="15" x="201.4202" y="320.06076" width="138" height="46" id="button17"/>
+    <rect class="button-box" rx="15" ry="15" x="345.66827" y="266.82825" width="138" height="46" id="button18"/>
+    <rect class="button-box" rx="15" ry="15" x="345.79037" y="319.99255" width="138" height="46" id="button19"/>
+    <rect class="button-box" rx="15" ry="15" x="740.95538" y="598.60791" width="138" height="46" id="button20"/>
+    <rect class="button-box" rx="15" ry="15" x="885.19519" y="598.72699" width="138" height="46" id="button21"/>
+    <rect class="button-box" rx="15" ry="15" x="1030.9459" y="598.64862" width="138" height="46" id="button22"/>
+    <rect class="button-box" rx="15" ry="15" x="1174.8218" y="598.38586" width="138" height="46" id="button23"/>
+    <rect class="button-box" rx="15" ry="15" x="885.32117" y="798.55157" width="138" height="46" id="button24"/>
+    <rect class="button-box" rx="15" ry="15" x="885.26044" y="850.61279" width="138" height="46" id="button25"/>
+    <rect class="button-box" rx="15" ry="15" x="884.79419" y="745.69922" width="138" height="46" id="button26"/>
+    <rect class="button-box" rx="15" ry="15" x="884.92322" y="651.65454" width="138" height="46" id="button27"/>
+    <rect class="button-box" rx="15" ry="15" x="1031.2334" y="651.98444" width="138" height="46" id="button28"/>
+    <rect class="button-box" rx="15" ry="15" x="1098.9847" y="798.71558" width="138" height="46" id="button29"/>
+    <rect class="button-box" rx="15" ry="15" x="1098.6331" y="851.25659" width="138" height="46" id="button30"/>
+    <rect class="button-box" rx="15" ry="15" x="1099.4658" y="745.09595" width="138" height="46" id="button31"/>
+    <rect class="button-box" rx="15" ry="15" x="56.660431" y="405.04474" width="138" height="46" id="button32"/>
+    <rect class="button-box" rx="15" ry="15" x="56.63726" y="458.71506" width="138" height="46" id="button33"/>
+    <rect class="button-box" rx="15" ry="15" x="57.213791" y="511.2691" width="138" height="46" id="button34"/>
+    <rect class="button-box" rx="15" ry="15" x="57.213791" y="564.34625" width="138" height="46" id="button35"/>
+    <rect class="button-box" rx="15" ry="15" x="58.031738" y="617.57544" width="138" height="46" id="button36"/>
+    <rect class="button-box" rx="15" ry="15" x="201.64961" y="694.11053" width="138" height="46" id="button37"/>
+    <rect class="button-box" rx="15" ry="15" x="201.81171" y="747.65381" width="138" height="46" id="button38"/>
+    <rect class="button-box" rx="15" ry="15" x="346.75027" y="693.8858" width="138" height="46" id="button39"/>
+    <rect class="button-box" rx="15" ry="15" x="345.20926" y="747.2771" width="138" height="46" id="button40"/>
+    <rect class="button-box" rx="15" ry="15" x="346.18936" y="800.00238" width="138" height="46" id="button41"/>
+    <rect class="button-box" rx="15" ry="15" x="524.54407" y="745.21204" width="138" height="46" id="button42"/>
+    <rect class="button-box" rx="15" ry="15" x="524.8924" y="798.50739" width="138" height="46" id="button43"/>
+    <rect class="button-box" rx="15" ry="15" x="672.83032" y="745.1297" width="138" height="46" id="button44"/>
+    <rect class="button-box" rx="15" ry="15" x="673.18286" y="798.42279" width="138" height="46" id="button45"/>
+    <rect class="button-box" rx="15" ry="15" x="961.74963" y="325.66986" width="138" height="46" id="button46"/>
+    <rect class="button-box" rx="15" ry="15" x="1028.7844" y="515.27911" width="138" height="46" id="button47"/>
+    <rect class="button-box" rx="15" ry="15" x="743.87061" y="55.838455" width="138" height="46" id="x"/>
+    <rect class="button-box" rx="15" ry="15" x="887.61749" y="56.046894" width="138" height="46" id="y"/>
+    <rect class="button-box" rx="15" ry="15" x="1031.7852" y="56.041759" width="138" height="46" id="rotx"/>
+    <rect class="button-box" rx="15" ry="15" x="1175.1422" y="56.138035" width="138" height="46" id="roty"/>
+  </g>
+  <g id="labels">
+    <text class="button-text" id="lbl_button1" data-for="button1" x="270.085" y="153.506" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button2" data-for="button2" x="413.815" y="153.970" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button3" data-for="button3" x="593.302" y="153.721" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button4" data-for="button4" x="736.949" y="153.696" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button5" data-for="button5" x="880.953" y="153.719" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button6" data-for="button6" x="269.975" y="206.332" style="display: inline" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button7" data-for="button7" x="414.440" y="206.544" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button8" data-for="button8" x="1241.605" y="538.468" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button9" data-for="button9" x="954.198" y="538.468" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button10" data-for="button10" x="1030.569" y="295.809" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button11" data-for="button11" x="1031.040" y="401.369" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button12" data-for="button12" x="1243.506" y="401.773" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button13" data-for="button13" x="1244.230" y="455.122" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button14" data-for="button14" x="126.004" y="291.595" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button15" data-for="button15" x="125.605" y="344.656" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button16" data-for="button16" x="270.087" y="289.925" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button17" data-for="button17" x="270.420" y="343.061" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button18" data-for="button18" x="414.668" y="289.828" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button19" data-for="button19" x="414.790" y="342.993" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button20" data-for="button20" x="809.955" y="621.608" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button21" data-for="button21" x="954.195" y="621.727" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button22" data-for="button22" x="1099.946" y="621.649" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button23" data-for="button23" x="1243.822" y="621.386" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button24" data-for="button24" x="954.321" y="821.552" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button25" data-for="button25" x="954.260" y="873.613" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button26" data-for="button26" x="953.794" y="768.699" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button27" data-for="button27" x="953.923" y="674.655" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button28" data-for="button28" x="1100.233" y="674.984" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button29" data-for="button29" x="1167.985" y="821.716" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button30" data-for="button30" x="1167.633" y="874.257" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button31" data-for="button31" x="1168.466" y="768.096" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button32" data-for="button32" x="125.660" y="428.045" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button33" data-for="button33" x="125.637" y="481.715" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button34" data-for="button34" x="126.214" y="534.269" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button35" data-for="button35" x="126.214" y="587.346" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button36" data-for="button36" x="127.032" y="640.575" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button37" data-for="button37" x="270.650" y="717.111" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button38" data-for="button38" x="270.812" y="770.654" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button39" data-for="button39" x="415.750" y="716.886" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button40" data-for="button40" x="414.209" y="770.277" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button41" data-for="button41" x="415.189" y="823.002" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button42" data-for="button42" x="593.544" y="768.212" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button43" data-for="button43" x="593.892" y="821.507" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button44" data-for="button44" x="741.830" y="768.130" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button45" data-for="button45" x="742.183" y="821.423" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button46" data-for="button46" x="1030.750" y="348.670" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button47" data-for="button47" x="1097.784" y="538.279" text-anchor="middle" dominant-baseline="middle">
+            .
+        </text>
+    <text class="button-text" id="lbl_button48" data-for="x" x="812.871" y="78.838" text-anchor="middle" dominant-baseline="middle">
+            x axis
+        </text>
+    <text class="button-text" id="lbl_button49" data-for="y" x="956.617" y="79.047" text-anchor="middle" dominant-baseline="middle">
+            y axis
+        </text>
+    <text class="button-text" id="lbl_button50" data-for="rotx" x="1100.785" y="79.042" text-anchor="middle" dominant-baseline="middle">
+            rx axis
+        </text>
+    <text class="button-text" id="lbl_button51" data-for="roty" x="1244.142" y="79.138" text-anchor="middle" dominant-baseline="middle">
+            ry axis
+        </text>
+  </g>
+</svg>
