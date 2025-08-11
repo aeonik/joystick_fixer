@@ -1,0 +1,27 @@
+document = prolog? misc* element misc*
+
+(* single token *)
+prolog = #'(?s)<\\?xml\\b.*?\\?>'
+misc   = (comment / pi / ws)+
+ws     = #'\s+'
+
+element = node / empty
+empty   = '<' NAME <attrs> ws? '/>'
+node    = '<' NAME <attrs> ws? '>' content* '</' NAME ws? '>'
+
+<content> = !'</' (element / text / special)
+text      = #'[^<]+'
+<special> = cdata / comment / pi
+
+comment = #'(?s)<!--.*?-->'
+(* PI but not xml decl; (?is) = case-insensitive + dotall *)
+pi      = #'(?is)<\\?(?!xml\\b).*?\\?>'
+cdata   = #'(?s)<!\\[CDATA\\[.*?\\]\\]>'
+
+<attrs> = (ws attr)*
+attr    = NAME ws? '=' ws? value
+value   = dq / sq
+dq      = '"'  #'[^"]*'  '"'
+sq      = "'"  #"[^']*"  "'"
+
+NAME    = #"[A-Za-z_:][\w.:-]*"
