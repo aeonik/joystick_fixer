@@ -31,4 +31,14 @@
                       :main-opts  ["-m" "thomasa.morpheus.main"]}
            :build {:deps {io.github.clojure/tools.build {:mvn/version "0.9.4"}}
                    :ns-default build}
+           :bench {:extra-paths ["bench"]
+                   :extra-deps {criterium/criterium {:mvn/version "0.4.6"}
+                                instaparse/instaparse {:mvn/version "1.5.0"}
+                                hickory/hickory {:mvn/version "0.7.1"}
+                                enlive/enlive {:mvn/version "1.1.6"}
+                                org.clojure/data.xml {:mvn/version "0.2.0-alpha9"}
+                                org.clojure/data.zip {:mvn/version "1.1.0"}
+                                riveted/riveted {:mvn/version "0.2.0"}
+                                tupelo/tupelo {:mvn/version "24.12.25"}}
+                   :main-opts  ["-m" "performance.parser-bench"]}
            :controlmap {:main-opts ["-m" "aeonik.controlmap.core"]}}}
