@@ -144,18 +144,16 @@
 
 ;; TODO: Figure out how to get the tspan out of here, and use the functions below
 (defn make-content-updater
-  "Updates a node’s :content.
-
+  "Updates a node's :content.
    • If `content-or-fn` is a **vector of action strings**, it produces
-     a separate <tspan> per action, re-using the node’s :x and :y (or :x only).
-   • If it’s a **string**, it stays as one tspan.
-   • If it’s a **fn**, the fn is called with the node (unchanged behaviour)."
+     a separate <tspan> per action, re-using the node's :x and :y (or :x only).
+   • If it's a **string**, it stays as one tspan.
+   • If it's a **fn**, the fn is called with the node (unchanged behaviour)."
   [content-or-fn & {:keys [line-height] :or {line-height "1.2em"}}]
   (fn [node]
     (let [content (if (fn? content-or-fn) (content-or-fn node) content-or-fn)
           x       (get-in node [:attrs :x])
           y       (get-in node [:attrs :y])]
-
       (assoc node :content
              (cond
                ;; ── 1) vector of actions → multi-tspan
@@ -164,16 +162,17 @@
                 (fn [idx action]
                   {:type    :element
                    :tag     :tspan
-                   :attrs   (cond-> {:x x}
-                              y (assoc :y y)
-                              (pos? idx) (assoc :dy line-height))
+                   :attrs   (if (zero? idx)
+                              ;; First tspan: use original x,y coordinates
+                              (cond-> {:x x}
+                                y (assoc :y y))
+                              ;; Subsequent tspans: only x and dy
+                              {:x x :dy line-height})
                    :content [action]})
                 content)
-
                ;; ── 2) already a Hickory element/vector → leave untouched
                (and (coll? content) (keyword? (:tag (first content))))
                content
-
                ;; ── 3) plain string → single tspan (old behaviour)
                :else
                [{:type :element
