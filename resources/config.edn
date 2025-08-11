@@ -34,16 +34,17 @@
   {"RIGHT VPC Stick MT-50CM3" "alpha_RP"
    "L-VPC Stick MT-50CM2"     "alpha_L"
    "R-VPC Stick MT-50CM2"     "alpha_R"
-   "VPC SharKa-50 Panel"      "panel_3"
+   "VPC SharKa-50 Panel"      "sharka-50_panel"
    "VPC Panel #1"             "panel_1"
    "VPC Panel #2"             "panel_2"
+   "VPC Panel #3"             "panel_3"
    "MongoosT-50CM3"           "vpc_mongoose_t50cm3"
    "VPC Rudder Pedals"        "rudder_pedals"
    "VPC Throttle MT-50CM3"    "vpc_mongoose_t50cm3"}
 
   :action-name-cleaning
   {:remove-v-prefix true
-   :prefix-filters ["weapon_" "view_" "target_" "seat_" "camera_"
+   :prefix-filters ["flashui_" "weapon_" "view_" "target_" "seat_" "camera_"
                     "countermeasure_" "look_" "turret_" "ifcs_"
                     "movement_" "interaction_" "misc_"]
    :regex-filters ["_mouse$"]}
