@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<ActionMaps>
+  <ActionProfiles version="1" optionsVersion="2" rebindVersion="2" profileName="default">
+    <deviceoptions name="VIRPIL Controls 20240617 L-VPC MongoosT-50CM3  {81973344-0000-0000-0000-504944564944}">
+      <option input="z" deadzone="0.0396"/>
+    </deviceoptions>
+    <deviceoptions name="VIRPIL Controls 20240617 L-VPC Stick MT-50CM2  {012F3344-0000-0000-0000-504944564944}">
+      <option input="y" deadzone="0.049499996"/>
+    </deviceoptions>
+    <options type="joystick" instance="8"/>
+    <modifiers/>
+    <actionmap name="player">
+      <action name="ammoRepool">
+        <rebind input=""/>
+      </action>
+    </actionmap>
+    <actionmap name="prone">
+      <action name="prone_rollleft">
+        <rebind input=""/>
+      </action>
+      <action name="prone_rollright">
+        <rebind input=""/>
+      </action>
+    </actionmap>
+    <actionmap name="mapui">
+      <action name="mapui_action_clearroute">
+        <rebind input=""/>
+      </action>
+    </actionmap>
+    <actionmap name="tractor_beam">
+      <action name="tractor_beam_decrease_distance">
+        <rebind input="js4_button4"/>
+      </action>
+    </actionmap>
+  </ActionProfiles>
+</ActionMaps>
