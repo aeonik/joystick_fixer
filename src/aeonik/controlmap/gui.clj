@@ -11,8 +11,9 @@
   (:import
    [javafx.scene.image Image]
    [javafx.scene.web WebEvent]
-   [java.awt Taskbar Taskbar$Feature]    ; Add these imports
-   [javax.imageio ImageIO])
+   [java.awt Taskbar Taskbar$Feature]   ; Add these imports
+   [javax.imageio ImageIO]
+   [javafx.application Platform])
   (:gen-class))
 
 (when (.startsWith (System/getProperty "os.name" "") "Mac")
@@ -246,7 +247,9 @@
   (Thread/sleep 100)
   (start!))
 
-(defn -main [& _] (start!))
+(defn -main [& _]
+  (Platform/setImplicitExit true)
+  (start!))
 
 (comment
   (start!)
