@@ -249,9 +249,11 @@
   "Prints a formatted discovery status report."
   []
   (let [info (actionmaps-info)]
-    (println "\n╔══════════════════════════════════════╗")
-    (println "║     Discovery Status Report         ║")
-    (println "╚══════════════════════════════════════╝")
+
+    (println)
+    (println "╔══════════════════════════════════╗")
+    (println "║     Discovery Status Report      ║")
+    (println "╚══════════════════════════════════╝")
     (println)
     (println "Platform:" (:platform info))
     (println "Environment:" (:env-var info) "=" (or (:env-override info) "<not set>"))
