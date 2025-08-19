@@ -35,19 +35,27 @@
         (println "Dock icon set failed:" (.getMessage t))))))
 
 ;; Inline version
-(comment (defn prepare-context [context]
-           (let [base (state/get-context)
-                 svgs (core/update-all-svgs base)
-                 base-path (System/getProperty "user.dir") ; or wherever your images are relative to
-                 svg-strings (into {}
-                                   (map (fn [[k svg]]
-                                          [k (-> svg
-                                                 (svg/inline-images base-path) ; Inline the images first
-                                                 svg/hickory->svg-string)]) ; Then convert to string
-                                        svgs))]
-             (assoc base :svgs svg-strings))))
+(comment
+  "I used to inline the entire SVG, but I was able to figure out how to get the SVG to be loaded from disk, probably don't want to use this technique,
+but knowing about it, and having the capibility around seems useful"
+  (defn prepare-context [context]
+    (let [base (state/get-context)
+          svgs (core/update-all-svgs base)
+          base-path (System/getProperty "user.dir") ; or wherever your images are relative to
+          svg-strings (into {}
+                            (map (fn [[k svg]]
+                                   [k (-> svg
+                                          (svg/inline-images base-path) ; Inline the images first
+                                          svg/hickory->svg-string)]) ; Then convert to string
+                                 svgs))]
+      (assoc base :svgs svg-strings))))
 
-(defn prepare-context [context]
+(defn prepare-context
+  "This is essentially the state create from the core program,
+  probably want to move this to core or state.
+  Though having the SVGs rendered and ready to go is a bit complicated, GUI specific.
+  Not sure Yet..."
+  [context]
   (let [base (state/get-context)
         svgs (core/update-all-svgs base)
         base-path (System/getProperty "user.dir")
@@ -63,7 +71,10 @@
 ;; Initial State
 ;; =============================================================================
 
-(defn create-initial-state []
+(defn create-initial-state
+  "Function for priming the state for the GUI
+  TODO: Move find-unmapped-actions computation to initial state creation, this is useful for more than Just GUI"
+  []
   (let [context (prepare-context (state/get-context))
         available-svgs (set (keys (:svgs context)))
         instances-with-svgs (->> (:instances context)

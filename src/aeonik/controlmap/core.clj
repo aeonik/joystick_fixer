@@ -15,6 +15,7 @@
 ;; Action Name Cleaning
 ;; =============================================================================
 
+;; TODO: Only use this in GUI, and have it be live configurable for user.
 (defn clean-action-name
   "Removes common prefixes and arbitrary regex patterns from action names"
   [action-name]
