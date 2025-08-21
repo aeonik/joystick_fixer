@@ -10,20 +10,23 @@
 
 ;; =============================================================================
 ;; Loading Functions
-;; =============================================================================
+;; =======================
 
-(defn load-actionmaps []
-  (let [source (or (discovery/find-actionmaps)
-                   (io/resource "actionmaps.xml"))]
-    (if source
-      (do
-        (println "Loading actionmaps from:"
-                 (if (instance? java.io.File source)
-                   (.getAbsolutePath source)
-                   (.toString source)))
-        (-> source io/reader slurp h/parse h/as-hickory))
-      (throw (ex-info "No actionmaps found"
-                      {:searched-paths (discovery/get-search-paths)})))))
+(defn load-actionmaps
+  "Load actionmaps from an optional path, discovery, or fallback."
+  ([] (load-actionmaps nil))
+  ([custom-path]
+   (if-let [source (or (when (some? custom-path) custom-path)   ; allow String, File, URL
+                       (discovery/find-actionmaps)
+                       (io/resource "actionmaps.xml"))]
+     (do
+       (println "Loading actionmaps from:"
+                (if (instance? java.io.File source)
+                  (.getAbsolutePath ^java.io.File source)
+                  (str source)))
+       (-> source io/reader slurp h/parse h/as-hickory))
+     (throw (ex-info "No actionmaps found"
+                     {:searched-paths (discovery/get-search-paths)})))))
 
 (defn load-svg-resource [svg-id]
   (try
@@ -43,19 +46,17 @@
 
 (defn load-edn-configs [dir-path]
   (let [dir (io/file dir-path)]
-    (if (.exists dir)
-      (let [edn-files (filter #(str/ends-with? (.getName %) ".edn")
-                              (file-seq dir))]
-        (into {}
-              (keep (fn [file]
-                      (try
-                        (let [key (keyword (str/replace (.getName file) #"\.edn$" ""))]
-                          [key (edn/read-string (slurp file))])
-                        (catch Exception e
-                          (println "Warning: Failed to load" (.getName file))
-                          nil)))
-                    edn-files)))
-      {})))
+    (when-let [edn-files (seq (filter #(str/ends-with? (.getName %) ".edn")
+                                      (file-seq dir)))]
+      (into {}
+            (keep (fn [file]
+                    (try
+                      (let [key (keyword (str/replace (.getName file) #"\.edn$" ""))]
+                        [key (edn/read-string (slurp file))])
+                      (catch Exception e
+                        (println "Warning: Failed to load" (.getName file))
+                        nil)))
+                  edn-files)))))
 
 ;; =============================================================================
 ;; Extraction Functions
@@ -84,25 +85,24 @@
 ;; Context Building
 ;; =============================================================================
 
-(defn build-context [& {:keys [skip-svgs skip-edn]}]
+(defn build-context [& {:keys [skip-svgs skip-edn actionmaps-path]}]
   (println "\n🔧 Building context...")
   (let [registry (discovery/build-joystick-registry)
-        actionmaps (load-actionmaps)
+        actionmaps (load-actionmaps actionmaps-path)  ; Pass the custom path
         products (extract-products actionmaps)
         instances (map-to-svgs registry products)
         needed-svgs (set (vals instances))
         svgs (if skip-svgs {} (load-detected-svgs needed-svgs))
         edn-configs (if skip-edn {} (load-edn-configs "resources/config/svg/"))]
-
     (println (format "✓ Loaded: %d instances, %d SVGs"
                      (count instances) (count svgs)))
-
     {:registry registry
      :instances instances
      :products products
      :svgs svgs
      :edn-configs edn-configs
      :actionmaps actionmaps
+     :actionmaps-path actionmaps-path  ; Store the path for future reference
      :config (discovery/get-config)}))
 
 (defn refresh! [context]
@@ -132,6 +132,8 @@
 (comment
   ;; Initialize full context
   (init!)
+
+  (load-actionmaps)
 
   ;; Skip loading SVGs for faster startup
   (init! :skip-svgs true)

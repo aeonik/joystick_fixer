@@ -334,12 +334,17 @@
            ";base64,"
            (file->base64 file)))))
 
+(defn- uri-ish? [s]
+  (and s (or (str/starts-with? s "data:")
+             (str/starts-with? s "http")
+             (str/starts-with? s "file:"))))
+
 (defn resolve-relative-path
   "Resolves a relative path against a base path"
   [relative-path base-path]
   (let [clean-relative (-> relative-path
                            (str/replace #"^\.\./" "")
-                           (str/replace #"^\\./" ""))
+                           (str/replace #"^\./" ""))
         base-file (io/file base-path)]
     (.getAbsolutePath
      (io/file (if (.isDirectory base-file)
@@ -385,19 +390,26 @@
        vec))
 
 (defn inline-image
-  "Inlines a single image element by converting its href to a data URI"
+  "Inlines a single image element by converting its href/xlink:href to a data URI.
+   Idempotent: returns node unchanged for data:/http(s)/file: URLs."
   [image-node base-path]
-  (let [href (or (get-in image-node [:attrs :href])
-                 (get-in image-node [:attrs :xlink:href]))
-        resolved-path (resolve-relative-path href base-path)
-        data-uri (file->data-uri resolved-path)]
-    (if data-uri
-      (-> image-node
-          (assoc-in [:attrs :href] data-uri)
-          #_(assoc-in [:attrs :xlink:href] data-uri))
-      (do
-        (println (format "Warning: Could not inline image: %s" href))
-        image-node))))
+  (let [href   (get-in image-node [:attrs :href])
+        xhref  (get-in image-node [:attrs :xlink:href])
+        target (cond
+                 (and xhref (not (uri-ish? xhref))) xhref
+                 (and href  (not (uri-ish? href)))  href
+                 :else nil)]
+    (if (nil? target)
+      image-node
+      (let [resolved (resolve-relative-path target base-path)
+            data-uri (file->data-uri resolved)]
+        (if data-uri
+          (-> image-node
+              (assoc-in [:attrs :href] data-uri)
+              (assoc-in [:attrs :xlink:href] data-uri))
+          (do
+            (println (format "Warning: Could not inline image: %s" target))
+            image-node))))))
 
 (defn fix-all-relative-images-base64
   "Inlines all relative image references as base64 data URIs.

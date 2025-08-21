@@ -11,8 +11,11 @@
   (:import
    [javafx.scene.image Image]
    [javafx.scene.web WebEvent]
-   [java.awt Taskbar Taskbar$Feature]    ; Add these imports
-   [javax.imageio ImageIO])
+   [java.awt Taskbar Taskbar$Feature]   ; Add these imports
+   [javax.imageio ImageIO]
+   [javafx.stage FileChooser FileChooser$ExtensionFilter]
+   [javafx.event ActionEvent]
+   [javafx.scene Node])
   (:gen-class))
 
 (when (.startsWith (System/getProperty "os.name" "") "Mac")
@@ -76,7 +79,8 @@
      :status nil
      :filter-text ""
      :unmapped-actions unmapped
-     :show-unmapped? true}))
+     :show-unmapped? true
+     :show-file-chooser? false}))
 
 (def *state (atom (create-initial-state)))
 
@@ -94,6 +98,11 @@
 ;; =============================================================================
 ;; Event Handling
 ;; =============================================================================
+(defn file-chooser-button []
+  {:fx/type :button
+   :text "📁 Open..."
+   :tooltip {:fx/type :tooltip :text "Choose a different actionmaps.xml file"}
+   :on-action {:event/type ::choose-actionmaps}})
 
 (defn map-event-handler [event]
   (case (:event/type event)
@@ -104,18 +113,42 @@
                      (assoc state :status msg)))
     ::set-filter-text #(assoc % :filter-text (:fx/event event))
     ::toggle-unmapped #(update % :show-unmapped? not)
-    ::set-active-instance (fn [state]
-                            (if (:fx/event event)
-                              (assoc state :active-instance (:instance-id event))
-                              state))
-    ::reload-context (fn [_]
+    ::set-active-instance #(if (:fx/event event)
+                             (assoc % :active-instance (:instance-id event))
+                             %)
+    ::choose-actionmaps (fn [state]
+                          (println "Choose actionmaps clicked")
+                          (let [^ActionEvent action-event (:fx/event event)
+                                window (.getWindow (.getScene ^Node (.getTarget action-event)))
+                                chooser (FileChooser.)]
+                            (.setTitle chooser "Select actionmaps file")
+                            ;; Explicitly set to show all files
+                            (.clear (.getExtensionFilters chooser))
+                            ;; Or add an "All Files" filter
+                            (let [all-filter (javafx.stage.FileChooser$ExtensionFilter.
+                                              "All Files"
+                                              (into-array String ["*.*", "*"]))]
+                              (.add (.getExtensionFilters chooser) all-filter))
+                            (if-let [file (.showOpenDialog chooser window)]
+                              (try
+                                (println "Loading actionmaps from:" (.getAbsolutePath file))
+                                (state/init! :actionmaps-path file)
+                                (create-initial-state)
+                                (catch Exception e
+                                  (println "Error loading actionmaps:" (.getMessage e))
+                                  (assoc state :status (str "Error: " (.getMessage e)))))
+                              (do
+                                (println "No file selected")
+                                state))))
+    ::reload-context (fn [state]
                        (println "Reloading context...")
                        (try
-                         (state/init!)
-                         (create-initial-state)
+                         (let [path (get-in state [:context :actionmaps-path])]
+                           (state/init! :actionmaps-path path)
+                           (create-initial-state))
                          (catch Exception e
                            (println "Error reloading context:" (.getMessage e))
-                           @*state)))
+                           state)))
     ::export-svgs (fn [state]
                     (println "Generating SVGs...")
                     (core/generate-all-svgs! (:context state))
@@ -178,7 +211,9 @@
 (defn control-toolbar [state]
   {:fx/type :tool-bar
    :items
-   [{:fx/type :button
+   [(file-chooser-button)
+    {:fx/type :separator}
+    {:fx/type :button
      :text "🔄 Reload"
      :tooltip {:fx/type :tooltip :text "Reload all mappings"}
      :on-action {:event/type ::reload-context}}
