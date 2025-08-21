@@ -15,7 +15,8 @@
    [javax.imageio ImageIO]
    [javafx.stage FileChooser FileChooser$ExtensionFilter]
    [javafx.event ActionEvent]
-   [javafx.scene Node])
+   [javafx.scene Node]
+   [javafx.application Platform])
   (:gen-class))
 
 (when (.startsWith (System/getProperty "os.name" "") "Mac")
@@ -281,7 +282,9 @@
   (Thread/sleep 100)
   (start!))
 
-(defn -main [& _] (start!))
+(defn -main [& _]
+  (Platform/setImplicitExit true)
+  (start!))
 
 (comment
   (start!)
