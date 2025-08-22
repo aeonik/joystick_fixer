@@ -3,27 +3,34 @@
   (:require
    [clojure.string :as str]
    [cljfx.api :as fx]
-   [clojure.java.io :as io]  ; Add this import
+   [clojure.java.io :as io]
    [cljfx.ext.web-view :as fx.ext.web-view]
+   [cljfx.fx.image-view :as fx.image-view]
    [aeonik.controlmap.core :as core]
    [aeonik.controlmap.state :as state]
    [aeonik.controlmap.svg :as svg])
   (:import
-   [javafx.scene.image Image]
+   [javafx.scene.image Image ImageView]
+   [javafx.geometry Orientation]
    [javafx.scene.web WebEvent]
-   [java.awt Taskbar Taskbar$Feature]   ; Add these imports
+   [java.awt Taskbar Taskbar$Feature]
    [javax.imageio ImageIO]
    [javafx.stage FileChooser FileChooser$ExtensionFilter]
-   [javafx.event ActionEvent]
-   [javafx.scene Node]
-   [javafx.application Platform])
+   [javafx.event ActionEvent EventHandler]
+   [javafx.scene Node Cursor]
+   [javafx.application Platform]
+   [javafx.beans.value ChangeListener]
+   [org.girod.javafx.svgimage SVGLoader SVGImage SVGImageRegion])
   (:gen-class))
+
+(set! *warn-on-reflection* true)
 
 (when (.startsWith (System/getProperty "os.name" "") "Mac")
   (System/setProperty "apple.awt.application.name" "Control Mapper"))
 
 (def joystick-icon-path "images/gui_icon3.png")
-(def joystick-icon (javafx.scene.image.Image. joystick-icon-path))
+;; Fix #1: Add type hint for Image constructor
+(def joystick-icon (Image. ^String joystick-icon-path))
 
 (defn set-macos-dock-icon! []
   (when (and (.startsWith (System/getProperty "os.name" "") "Mac")
@@ -37,21 +44,81 @@
       (catch Throwable t
         (println "Dock icon set failed:" (.getMessage t))))))
 
-;; Inline version
 (comment
   "I used to inline the entire SVG, but I was able to figure out how to get the SVG to be loaded from disk, probably don't want to use this technique,
 but knowing about it, and having the capibility around seems useful"
   (defn prepare-context [context]
     (let [base (state/get-context)
           svgs (core/update-all-svgs base)
-          base-path (System/getProperty "user.dir") ; or wherever your images are relative to
+          base-path (System/getProperty "user.dir")
           svg-strings (into {}
                             (map (fn [[k svg]]
                                    [k (-> svg
-                                          (svg/inline-images base-path) ; Inline the images first
-                                          svg/hickory->svg-string)]) ; Then convert to string
+                                          (svg/inline-images base-path)
+                                          svg/hickory->svg-string)])
                                  svgs))]
       (assoc base :svgs svg-strings))))
+
+(def ^:private ext-with-image-view-props
+  (fx/make-ext-with-props fx.image-view/props))
+
+(defn resizable-image-view
+  [{:keys [image]}]
+  (letfn [(aspect-ratio [^Image img]
+            (let [h (some-> img .getHeight)]
+              (if (and h (pos? h))
+                (/ (.getWidth ^Image img) h)
+                1.0)))
+          (img-width  [^Image img]
+            (or (some-> img .getWidth) 0.0))
+          (img-height [^Image img]
+            (or (some-> img .getHeight) 0.0))
+          (pref [constraint img scale-fn fallback]
+            (if (pos? constraint)
+              (scale-fn constraint (aspect-ratio img))
+              (fallback img)))]
+    {:fx/type ext-with-image-view-props
+     :desc {:fx/type fx/ext-instance-factory
+            :create (fn []
+                      (proxy [ImageView] []
+                        (minWidth  [_] 0.0)
+                        (minHeight [_] 0.0)
+                        (prefWidth [h]
+                          (let [^Image img (.getImage ^ImageView this)]
+                            (pref h img * img-width)))
+                        (prefHeight [w]
+                          (let [^Image img (.getImage ^ImageView this)]
+                            (pref w img (fn [x ar] (/ x ar)) img-height)))
+                        (isResizable [] true)
+                        (resize [w h]
+                          (.setFitWidth  ^ImageView this w)
+                          (.setFitHeight ^ImageView this h))
+                        (getContentBias [] Orientation/HORIZONTAL)))}
+     :props {:preserve-ratio true
+             :image image}}))
+
+;; Going to remove these after testing. Point directly to SVG or parse directly in future
+
+(defn normalize-svg-for-fx [s]
+  (let [;; unwrap any <html> wrapper so root is <svg …>
+        s (-> s
+              (str/replace #"(?is)^.*?<svg" "<svg")
+              (str/replace #"(?is)</svg>.*$" "</svg>"))
+        ;; fix case of viewBox
+        s (str/replace s #"(?i)\bviewbox\b" "viewBox")
+        ;; ensure xlink namespace if we decide to use xlink:href
+        s (if (re-find #"xmlns:xlink" s)
+            s
+            (str/replace s #"(?i)<svg\b" "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\""))
+        ;; (optional) make <image href=…> also available as xlink:href=…
+        s (if (re-find #"xlink:href" s)
+            s
+            (str/replace s #"(?i)(<image\b[^>]*?)\bhref="
+                         "$1xlink:href="))]
+    s))
+
+(defn strip-script [s]
+  (str/replace s #"<script\b[^>]*>[\s\S]*?</script>" ""))
 
 (defn prepare-context
   "This is essentially the state create from the core program,
@@ -66,7 +133,9 @@ but knowing about it, and having the capibility around seems useful"
                           (map (fn [[k svg]]
                                  [k (-> svg
                                         (svg/make-urls-absolute base-path)
-                                        svg/hickory->svg-string)])
+                                        svg/hickory->svg-string
+                                        strip-script
+                                        normalize-svg-for-fx)])
                                svgs))]
     (assoc base :svgs svg-strings)))
 
@@ -110,6 +179,7 @@ but knowing about it, and having the capibility around seems useful"
 ;; =============================================================================
 ;; Event Handling
 ;; =============================================================================
+
 (defn file-chooser-button []
   {:fx/type :button
    :text "📁 Open..."
@@ -131,17 +201,16 @@ but knowing about it, and having the capibility around seems useful"
     ::choose-actionmaps (fn [state]
                           (println "Choose actionmaps clicked")
                           (let [^ActionEvent action-event (:fx/event event)
-                                window (.getWindow (.getScene ^Node (.getTarget action-event)))
-                                chooser (FileChooser.)]
+                                ^Node target (.getTarget action-event)
+                                window (.getWindow (.getScene target))
+                                ^FileChooser chooser (FileChooser.)
+                                ^javafx.collections.ObservableList filters (.getExtensionFilters chooser)
+                                ^java.util.List exts ["*.*" "*"]
+                                all-filter (FileChooser$ExtensionFilter. "All Files" exts)]
                             (.setTitle chooser "Select actionmaps file")
-                            ;; Explicitly set to show all files
-                            (.clear (.getExtensionFilters chooser))
-                            ;; Or add an "All Files" filter
-                            (let [all-filter (javafx.stage.FileChooser$ExtensionFilter.
-                                              "All Files"
-                                              (into-array String ["*.*", "*"]))]
-                              (.add (.getExtensionFilters chooser) all-filter))
-                            (if-let [file (.showOpenDialog chooser window)]
+                            (.clear filters)
+                            (.add filters all-filter)
+                            (if-let [^java.io.File file (.showOpenDialog chooser window)]
                               (try
                                 (println "Loading actionmaps from:" (.getAbsolutePath file))
                                 (state/init! :actionmaps-path file)
@@ -172,6 +241,105 @@ but knowing about it, and having the capibility around seems useful"
 ;; UI Components
 ;; =============================================================================
 
+(defn svg-region ^SVGImageRegion [^String path]
+  (let [^SVGImage img (SVGLoader/load (clojure.java.io/file path))]
+    (.createRegion img))) ; resizes with parent, preserves aspect
+
+(defn ^SVGImageRegion svg-region-from-string
+  "Persist SVG string to a temp file and load as a resizable Region."
+  [^String svg]
+  (let [^java.io.File tmp (java.io.File/createTempFile "panel" ".svg")]
+    (.deleteOnExit tmp)
+    (spit tmp svg)
+    (let [^SVGImage img (SVGLoader/load tmp)]
+      (.createRegion img))))
+
+(defn ^String find-button-id ^String [^Node n]
+  (loop [m n]
+    (when m
+      (if (and (.getId m)
+               (.contains (.getStyleClass m) "button-box"))
+        (.getId m)
+        (recur (.getParent m))))))
+
+(defn svg-pane-str [{:keys [^String svg on-click]}]
+  {:fx/type fx/ext-instance-factory
+   :create (fn []
+             (let [^SVGImage img (SVGLoader/load svg)        ;; ← loads directly from STRING
+                   ^SVGImageRegion region (.createRegion img)]
+               (.setOnMouseClicked region
+                                   (reify EventHandler
+                                     (handle [_ e]
+                                       (when-let [bid (some-> (.getTarget e) find-button-id)]
+                                         (when on-click (on-click bid))))))
+               region))})
+
+(defn viewbox-wh
+  "Returns {:w .. :h ..} from the SVG string (defaults to 1000x1000 if missing)."
+  ^java.util.Map [^String s]
+  (if-let [[_ a b c d]
+           (re-find #"viewBox\s*=\s*\"(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\"" s)]
+    {:w (Double/parseDouble c) :h (Double/parseDouble d)}
+    {:w 1000.0 :h 1000.0}))
+
+;; anchor can be :center (default), :topleft, :top, :left
+(defn svg-pane-str-scaled [{:keys [^String svg on-click mode] :or {mode :contain}}]
+  {:fx/type fx/ext-instance-factory
+   :create (fn []
+             (let [^SVGImage img (SVGLoader/load svg)
+                   ^SVGImageRegion region (.createRegion img)
+                   {:keys [w h]} (viewbox-wh svg)
+                   ^javafx.scene.Group group (javafx.scene.Group. (into-array javafx.scene.Node [region]))
+                   pane (proxy [javafx.scene.layout.Pane] []
+                          (computePrefWidth  [_] (double w))
+                          (computePrefHeight [_] (double h))
+                          (computeMinWidth  [_] 0.0)      ; allow shrinking freely
+                          (computeMinHeight [_] 0.0)
+                          (layoutChildren []
+                            (let [pw (.getWidth this)
+                                  ph (.getHeight this)
+                                  sx (/ pw w)
+                                  sy (/ ph h)
+                                  s  (case mode
+                                       :contain   (min sx sy)
+                                       :cover     (max sx sy)
+                                       :fit-width sx
+                                       :fit-height sy)]
+                              ;; Apply scale transform with top-left origin
+                              (let [scale-transform (javafx.scene.transform.Scale. s s 0 0)]
+                                (.clear (.getTransforms group))
+                                (.add (.getTransforms group) scale-transform))
+                              ;; For :contain mode, center the scaled content
+                              ;; For other modes, anchor to top-left
+                              (if (= mode :contain)
+                                (let [scaled-w (* w s)
+                                      scaled-h (* h s)
+                                      offset-x (/ (- pw scaled-w) 2.0)
+                                      offset-y (/ (- ph scaled-h) 2.0)]
+                                  (.setLayoutX group (max 0 offset-x))
+                                  (.setLayoutY group (max 0 offset-y)))
+                                (do
+                                  (.setLayoutX group 0)
+                                  (.setLayoutY group 0)))
+                              ;; clip only for :cover so overflow doesn't bleed
+                              (if (= mode :cover)
+                                (.setClip this (javafx.scene.shape.Rectangle. 0 0 pw ph))
+                                (.setClip this nil)))))]
+               ;; keep the region at its natural design size
+               (.setPrefSize region w h)
+               ;; Position region at origin within the group
+               (.setLayoutX region 0)
+               (.setLayoutY region 0)
+               ;; event delegation
+               (.setOnMouseClicked region
+                                   (reify EventHandler
+                                     (^void handle [_ ^javafx.event.Event e]
+                                       (when-let [bid (some-> (.getTarget e) find-button-id)]
+                                         (when on-click (on-click bid))))))
+               (.setCursor region Cursor/HAND)
+               (doto (.getChildren pane) (.add group))
+               pane))})
+
 (defn unmapped-actions-panel [state]
   (let [filtered (filtered-unmapped-actions state)]
     {:fx/type :v-box
@@ -201,10 +369,30 @@ but knowing about it, and having the capibility around seems useful"
    :on-selection-changed {:event/type ::set-active-instance :instance-id instance-id}
    :content {:fx/type fx.ext.web-view/with-engine-props
              :desc {:fx/type :web-view
-                    :pref-width 800
-                    :pref-height 600}
+                    :pref-width 1341
+                    :pref-height 948}
              :props {:content svg
                      :on-status-changed {:event/type ::set-status}}}})
+
+(defn instance-tab [{:keys [instance-id display-name]}]
+  {:fx/type :tab
+   :text (format "[%d] %s" instance-id display-name)
+   :closable false
+   :on-selection-changed {:event/type ::set-active-instance
+                          :instance-id instance-id}
+   :content (resizable-image-view
+             {:image {:is (io/input-stream "resources/images/vpc_alpha_R.png")}})})
+
+(defn instance-tab [{:keys [instance-id display-name svg]}]
+  {:fx/type :tab
+   :text (format "[%d] %s" instance-id display-name)
+   :closable false
+   :on-selection-changed {:event/type ::set-active-instance
+                          :instance-id instance-id}
+   :content (svg-pane-str-scaled
+             {:svg svg
+              :on-click (fn [id]
+                          (swap! *state assoc :status (str "clicked:" id)))})})
 
 (defn svg-tab-pane [state]
   (let [{:keys [context instances active-instance]} state]
@@ -282,7 +470,8 @@ but knowing about it, and having the capibility around seems useful"
 
 (defn start! []
   (fx/mount-renderer *state renderer)
-  (set-macos-dock-icon!)   (println "✓ GUI started"))
+  (set-macos-dock-icon!)
+  (println "✓ GUI started"))
 
 (defn stop! []
   (fx/unmount-renderer *state renderer)
