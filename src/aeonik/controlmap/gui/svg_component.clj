@@ -108,8 +108,9 @@
   (.requestLayout pane))
 
 (defn- set-svg-content! [state ^Pane pane ^String raw]
-  (let [svg (some-> raw normalize-svg)
-        kids (.getChildren pane)]
+  (let [svg  (some-> raw normalize-svg)
+        root ^javafx.scene.Group (:root @state)
+        kids (.getChildren root)]
     (.clear kids)
     (when svg
       (let [img  (load-svg-image svg)
@@ -119,6 +120,7 @@
                :svg raw
                :svg-image img
                :dims dims)))
+    ;; ensure layout reacts
     (.requestLayout pane)))
 
 (defn- make-pane []
@@ -126,43 +128,52 @@
                      :svg-image nil
                      :dims {:w 1000.0 :h 1000.0}
                      :mode :contain
-                     :handler nil})
-        pane (proxy [Pane] []
-               (isResizable [] true)
-               (getContentBias [] Orientation/HORIZONTAL)
-               (computePrefWidth [height]
-                 (let [{:keys [w h]} (:dims @state)
-                       aspect (if (pos? h) (/ w h) 1.0)]
-                   (if (pos? height) (* height aspect) w)))
-               (computePrefHeight [width]
-                 (let [{:keys [w h]} (:dims @state)
-                       aspect (if (pos? w) (/ h w) 1.0)]
-                   (if (pos? width) (* width aspect) h)))
-               (layoutChildren []
-                 (let [{:keys [mode dims svg-image]} @state
-                       {:keys [w h]} dims
-                       pane-w (.getWidth ^Pane this)
-                       pane-h (.getHeight ^Pane this)
-                       sx (if (pos? w) (/ pane-w w) 1.0)
-                       sy (if (pos? h) (/ pane-h h) 1.0)
-                       s (case mode
-                           :contain (min sx sy)
-                           :cover (max sx sy)
-                           :fit-width sx
-                           :fit-height sy
-                           :stretch 1.0)
-                       fx (if (= mode :stretch) sx s)
-                       fy (if (= mode :stretch) sy s)
-                       sw (* w fx)
-                       sh (* h fy)
-                       ox (/ (- pane-w sw) 2.0)
-                       oy (/ (- pane-h sh) 2.0)]
-                   (when-let [^SVGImage img svg-image]
-                     (.setScaleX img fx)
-                     (.setScaleY img fy)
-                     (.setLayoutX img ox)
-                     (.setLayoutY img oy)))))]
-    (.setPickOnBounds pane true)
+                     :root (javafx.scene.Group.)
+                     :scale-xf (javafx.scene.transform.Scale. 1.0 1.0 0.0 0.0)}) ; sx,sy,pivot(0,0)
+        pane  (proxy [Pane] []
+                (isResizable [] true)
+                (getContentBias [] Orientation/HORIZONTAL)
+                (computePrefWidth [height]
+                  (let [{:keys [w h]} (:dims @state)
+                        aspect (if (pos? h) (/ w h) 1.0)]
+                    (if (pos? height) (* height aspect) w)))
+                (computePrefHeight [width]
+                  (let [{:keys [w h]} (:dims @state)
+                        aspect (if (pos? w) (/ h w) 1.0)]
+                    (if (pos? width) (* width aspect) h)))
+                (layoutChildren []
+                  (let [{:keys [mode dims root scale-xf]} @state
+                        {:keys [w h]} dims
+                        pw (.getWidth ^Pane this)
+                        ph (.getHeight ^Pane this)
+                        sx (if (pos? w) (/ pw w) 1.0)
+                        sy (if (pos? h) (/ ph h) 1.0)
+                        s  (case mode
+                             :contain    (min sx sy)
+                             :cover      (max sx sy)
+                             :fit-width  sx
+                             :fit-height sy
+                             :stretch    1.0)
+                        fx (if (= mode :stretch) sx s)
+                        fy (if (= mode :stretch) sy s)
+                        sw (* w fx)
+                        sh (* h fy)
+                        ox (/ (- pw sw) 2.0)
+                        oy (/ (- ph sh) 2.0)]
+                    ;; scale + position the wrapper group
+                    (.setX ^javafx.scene.transform.Scale scale-xf fx)
+                    (.setY ^javafx.scene.transform.Scale scale-xf fy)
+                    (.setLayoutX ^javafx.scene.Group root ox)
+                    (.setLayoutY ^javafx.scene.Group root oy)
+                    ;; clip only for :cover (and clear otherwise)
+                    (.setClip ^Pane this
+                              (when (= mode :cover)
+                                (javafx.scene.shape.Rectangle. 0 0 pw ph))))))]
+    ;; mount wrapper group + its scale transform once
+    (doto (.getChildren pane)
+      (.setAll (into-array javafx.scene.Node [(:root @state)])))
+    (doto (.getTransforms ^javafx.scene.Group (:root @state))
+      (.setAll (into-array javafx.scene.transform.Transform [(:scale-xf @state)])))
     (.. pane getProperties (put ::state state))
     pane))
 
@@ -219,25 +230,26 @@
        :on-svg-click on-svg-click}
       (merge (dissoc props :fx/type :svg-content :scale-mode :on-svg-click))))
 
-(require '[cljfx.api :as fx]
-         '[aeonik.controlmap.gui.svg-component :as svgc])
-;; => nil
-(def test-svg
-  "<svg viewBox=\"0 0 100 100\">
+(comment
+  (require '[cljfx.api :as fx]
+           '[aeonik.controlmap.gui.svg-component :as svgc])
+  ;; => nil
+  (def test-svg
+    "<svg viewBox=\"0 0 100 100\">
      <rect x=\"5\"  y=\"5\"  width=\"40\" height=\"40\" fill=\"#4B9\"/>
      <rect id=\"btn1\" class=\"button-box\" x=\"55\" y=\"55\" width=\"40\" height=\"40\" fill=\"#D55\"/>
    </svg>")
-;;
-;; => #'user/test-svg
-(eval-on-fx!
- #(fx/create-component
-   {:fx/type :stage
-    :showing true
-    :width 480 :height 360
-    :title "svg-view smoke test"
-    :scene {:fx/type :scene
-            :root {:fx/type svgc/svg-view
-                   :svg-content test-svg
-                   :scale-mode :contain
-                   :on-svg-click (println "CLICK:")
-                   :pref-width 400 :pref-height 300}}}))
+  ;;
+  ;; => #'user/test-svg
+  (eval-on-fx!
+   #(fx/create-component
+     {:fx/type :stage
+      :showing true
+      :width 480 :height 360
+      :title "svg-view smoke test"
+      :scene {:fx/type :scene
+              :root {:fx/type svgc/svg-view
+                     :svg-content test-svg
+                     :scale-mode :contain
+                     :on-svg-click (println "CLICK:")
+                     :pref-width 400 :pref-height 300}}})))
