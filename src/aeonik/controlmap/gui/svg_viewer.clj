@@ -70,9 +70,9 @@
     (.createRegion img))) ; resizes with parent, preserves aspect
 
 (defn svg-region-from-string
+  "Creates an SVG region from SVG string content"
   ^org.girod.javafx.svgimage.SVGImageRegion [^String svg]
-  (let [^org.girod.javafx.svgimage.SVGImage img
-        (org.girod.javafx.svgimage.SVGLoader/load svg)]
+  (let [^org.girod.javafx.svgimage.SVGImage img (SVGLoader/load svg)]
     (.createRegion img)))
 
 ;; =============================================================================
@@ -203,16 +203,102 @@
        pane))})
 
 ;; =============================================================================
-;; Development Helpers
+;; INTERACTIVE DEVELOPMENT - Just call (renderer) to refresh
 ;; =============================================================================
 
+;; Get the renderer from your main GUI
+;; (def renderer (aeonik.controlmap.gui.main/renderer))
+
+(defn debug-renderer
+  "Debug function to see what the renderer actually is"
+  []
+  (let [renderer-obj (aeonik.controlmap.gui.main/renderer)]
+    (println "Renderer type:" (type renderer-obj))
+    (println "Renderer value:" renderer-obj)
+    (println "Is callable?" (try (renderer-obj) :yes (catch Exception e :no)))
+    renderer-obj))
+
+;; For interactive development with cljfx
 (comment
-  ;; Test SVG loading
+  ;; Step 1: Make sure the main namespace is loaded
+  (require '[aeonik.controlmap.gui.main :as main])
+
+  ;; Step 2: Start the GUI if not already running
+  (main/start!)
+
+  ;; Step 3: To refresh the GUI after changing any view functions, just call:
+  (main/renderer)
+
+  ;; The renderer object can be called with no args to trigger a refresh
+  ;; This is exactly how the cljfx interactive development example works
+
+  ;; Example workflow:
+  ;; 1. Change any view function in your code
+  ;; 2. Re-evaluate that function in the REPL
+  ;; 3. Call (main/renderer) to see the changes
+
+  ;; Working with state:
+  @main/*state
+
+  ;; Update state (GUI auto-refreshes)
+  (swap! main/*state assoc :status "Hello from REPL!")
+
+  ;; Step 3: For interactive development, work with the state atom directly
+  ;; The renderer watches the state atom and updates automatically
+
+  ;; Get current state
+  @aeonik.controlmap.gui.main/*state
+
+  ;; Update state to trigger re-render
+  (swap! aeonik.controlmap.gui.main/*state
+         assoc :status "Testing from REPL!")
+
+  ;; Test SVG loading directly
   (def test-svg "<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"80\" height=\"80\"/></svg>")
-  (def region (svg-region-from-string test-svg))
+
+  ;; Update the SVG in the current instance
+  (swap! aeonik.controlmap.gui.main/*state
+         (fn [state]
+           (let [active-instance (:active-instance state)
+                 svg-id (some (fn [[inst-id svg-id]]
+                                (when (= inst-id active-instance) svg-id))
+                              (:instances state))]
+             (if svg-id
+               (assoc-in state [:context :svgs svg-id] test-svg)
+               state))))
 
   ;; Test viewbox parsing
   (viewbox-wh test-svg)
+  ;; => {:w 100.0, :h 100.0}
 
   ;; Test SVG normalization
-  (normalize-svg-for-fx "<html><svg viewbox=\"0 0 100 100\"></svg></html>"))
+  (normalize-svg-for-fx "<html><svg viewbox=\"0 0 100 100\"></svg></html>")
+
+  ;; Test with a more complex SVG
+  (def complex-svg "<svg viewBox=\"0 0 200 200\">
+    <rect x=\"10\" y=\"10\" width=\"80\" height=\"80\" fill=\"red\"/>
+    <circle cx=\"150\" cy=\"100\" r=\"40\" fill=\"black\"/>
+    <text x=\"100\" y=\"180\" text-anchor=\"middle\" fill=\"blue\">Test SVG</text>
+  </svg>")
+
+  ;; Update active instance with complex SVG
+  (swap! aeonik.controlmap.gui.main/*state
+         (fn [state]
+           (let [active-instance (:active-instance state)
+                 svg-id (some (fn [[inst-id svg-id]]
+                                (when (= inst-id active-instance) svg-id))
+                              (:instances state))]
+             (if svg-id
+               (assoc-in state [:context :svgs svg-id] complex-svg)
+               state))))
+
+  ;; If you need to restart the GUI
+  (aeonik.controlmap.gui.main/restart!)
+
+  ;; To see what instances are available
+  (map first (:instances @aeonik.controlmap.gui.main/*state))
+
+  ;; To switch to a different instance
+  (swap! aeonik.controlmap.gui.main/*state
+         assoc :active-instance 1) ; or whatever instance ID you want
+  )
