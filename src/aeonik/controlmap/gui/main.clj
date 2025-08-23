@@ -10,7 +10,8 @@
    [aeonik.controlmap.state :as state]
    [aeonik.controlmap.svg :as svg]
    [aeonik.controlmap.gui.svg-viewer :as svg-viewer]
-   [aeonik.controlmap.gui.image-view :as image-view])
+   [aeonik.controlmap.gui.image-view :as image-view]
+   [aeonik.controlmap.gui.svg-component :as svgc])
   (:import
    [javafx.scene.image Image ImageView]
    [javafx.geometry Orientation]
@@ -235,6 +236,20 @@
              {:svg svg
               :on-click (fn [id]
                           (swap! *state assoc :status (str "clicked:" id)))})})
+
+(defn instance-tab [{:keys [instance-id display-name svg]}]
+  {:fx/type :tab
+   :text (format "[%d] %s" instance-id display-name)
+   :closable false
+   :on-selection-changed {:event/type ::set-active-instance
+                          :instance-id instance-id}
+   :content {:fx/type svgc/svg-view
+             :svg-content svg
+             :scale-mode :contain
+             :on-svg-click (fn [{:keys [button-id]}]
+                             (swap! *state assoc :status (str "clicked:" button-id)))
+             :pref-width  1341
+             :pref-height 948}})
 
 (defn svg-tab-pane [state]
   (let [{:keys [context instances active-instance]} state]
