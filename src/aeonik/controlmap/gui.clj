@@ -283,62 +283,58 @@ but knowing about it, and having the capibility around seems useful"
     {:w 1000.0 :h 1000.0}))
 
 ;; anchor can be :center (default), :topleft, :top, :left
-(defn svg-pane-str-scaled [{:keys [^String svg on-click mode] :or {mode :contain}}]
+(defn svg-pane-str-scaled
+  [{:keys [^String svg on-click mode] :or {mode :contain}}]
   {:fx/type fx/ext-instance-factory
-   :create (fn []
-             (let [^SVGImage img (SVGLoader/load svg)
-                   ^SVGImageRegion region (.createRegion img)
-                   {:keys [w h]} (viewbox-wh svg)
-                   ^javafx.scene.Group group (javafx.scene.Group. (into-array javafx.scene.Node [region]))
-                   pane (proxy [javafx.scene.layout.Pane] []
-                          (computePrefWidth  [_] (double w))
-                          (computePrefHeight [_] (double h))
-                          (computeMinWidth  [_] 0.0)      ; allow shrinking freely
-                          (computeMinHeight [_] 0.0)
-                          (layoutChildren []
-                            (let [pw (.getWidth this)
-                                  ph (.getHeight this)
-                                  sx (/ pw w)
-                                  sy (/ ph h)
-                                  s  (case mode
-                                       :contain   (min sx sy)
-                                       :cover     (max sx sy)
-                                       :fit-width sx
-                                       :fit-height sy)]
-                              ;; Apply scale transform with top-left origin
-                              (let [scale-transform (javafx.scene.transform.Scale. s s 0 0)]
-                                (.clear (.getTransforms group))
-                                (.add (.getTransforms group) scale-transform))
-                              ;; For :contain mode, center the scaled content
-                              ;; For other modes, anchor to top-left
-                              (if (= mode :contain)
-                                (let [scaled-w (* w s)
-                                      scaled-h (* h s)
-                                      offset-x (/ (- pw scaled-w) 2.0)
-                                      offset-y (/ (- ph scaled-h) 2.0)]
-                                  (.setLayoutX group (max 0 offset-x))
-                                  (.setLayoutY group (max 0 offset-y)))
-                                (do
-                                  (.setLayoutX group 0)
-                                  (.setLayoutY group 0)))
-                              ;; clip only for :cover so overflow doesn't bleed
-                              (if (= mode :cover)
-                                (.setClip this (javafx.scene.shape.Rectangle. 0 0 pw ph))
-                                (.setClip this nil)))))]
-               ;; keep the region at its natural design size
-               (.setPrefSize region w h)
-               ;; Position region at origin within the group
-               (.setLayoutX region 0)
-               (.setLayoutY region 0)
-               ;; event delegation
-               (.setOnMouseClicked region
-                                   (reify EventHandler
-                                     (^void handle [_ ^javafx.event.Event e]
-                                       (when-let [bid (some-> (.getTarget e) find-button-id)]
-                                         (when on-click (on-click bid))))))
-               (.setCursor region Cursor/HAND)
-               (doto (.getChildren pane) (.add group))
-               pane))})
+   :create
+   (fn []
+     (let [^org.girod.javafx.svgimage.SVGImage img (org.girod.javafx.svgimage.SVGLoader/load svg)
+           {:keys [w h]} (viewbox-wh svg)
+           scale-xf (javafx.scene.transform.Scale. 1.0 1.0 0.0 0.0) ; scaleX, scaleY, pivotX=0, pivotY=0
+           pane (proxy [javafx.scene.layout.Pane] []
+                  (computePrefWidth  [_] (double w))
+                  (computePrefHeight [_] (double h))
+                  (computeMinWidth  [_] 0.0)
+                  (computeMinHeight [_] 0.0)
+                  (layoutChildren []
+                    (let [pw (.getWidth this)
+                          ph (.getHeight this)
+                          sx (/ pw w)
+                          sy (/ ph h)
+                          s  (case mode
+                               :contain    (min sx sy)
+                               :cover      (max sx sy)
+                               :fit-width  sx
+                               :fit-height sy)
+                          aw (* w s)
+                          ah (* h s)
+                          center? (#{:contain :cover} mode)
+                          ox (if center? (/ (- pw aw) 2.0) 0.0)
+                          oy (if center? (/ (- ph ah) 2.0) 0.0)]
+                      ;; scale the whole SVG node tree (text + paths) uniformly
+                      (.setX scale-xf s)
+                      (.setY scale-xf s)
+                      (.setLayoutX img ox)
+                      (.setLayoutY img oy)
+                      ;; clip only for cover
+                      (.setClip this (when (= mode :cover)
+                                       (javafx.scene.shape.Rectangle. 0 0 pw ph))))))]
+       ;; attach transform and some perf hints
+       (doto (.getTransforms img)
+         (.setAll (into-array javafx.scene.transform.Transform [scale-xf])))
+       (.setManaged img false)
+       (.setCache img true)
+       (.setCacheHint img javafx.scene.CacheHint/SCALE)
+
+       ;; events
+       (.setOnMouseClicked img
+                           (reify javafx.event.EventHandler
+                             (^void handle [_ ^javafx.event.Event e]
+                               (when-let [bid (some-> (.getTarget e) find-button-id)]
+                                 (when on-click (on-click bid))))))
+
+       (doto (.getChildren pane) (.setAll (into-array javafx.scene.Node [img])))
+       pane))})
 
 (defn unmapped-actions-panel [state]
   (let [filtered (filtered-unmapped-actions state)]
