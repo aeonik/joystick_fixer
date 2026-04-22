@@ -35,19 +35,26 @@
 (def joystick-icon (Image. ^String joystick-icon-path))
 
 (defn fix-svg-text-positioning [svg-string]
-  (-> svg-string
-      ;; Remove the CSS transform from button-text class
-      (str/replace #"\.button-text\s*\{[^}]*transform:[^;]*;[^}]*\}"
-                   (fn [match]
-                     (-> match
-                         (str/replace #"transform:[^;]*;" "")))) ; Remove transform
-      ;; Adjust x coordinates if they were relying on the transform
-      (str/replace #"(<text[^>]*class=\"button-text\"[^>]*x=\")([0-9.]+)"
-                   (fn [[_ prefix x-val]]
-                     (let [x (Double/parseDouble x-val)
-                           ;; Subtract 50 from x to compensate for removed transform
-                           new-x (- x 50)]
-                       (str prefix new-x))))))
+  (if-let [[_ shift-str]
+           (re-find #"\.button-text\s*\{[^}]*transform:\s*translate\(\s*([-\d.]+)px\s*,\s*0(?:px)?\s*\)\s*;?[^}]*\}"
+                    svg-string)]
+    (let [shift (Double/parseDouble shift-str)]
+      (-> svg-string
+          ;; Remove the CSS transform from button-text class. JavaFX's SVG loader
+          ;; does not reliably honor it, so bake the horizontal offset into x attrs.
+          (str/replace #"(transform:\s*translate\(\s*[-\d.]+px\s*,\s*0(?:px)?\s*\)\s*;?)" "")
+          ;; Update text element x positions.
+          (str/replace #"(<text[^>]*class=\"button-text\"[^>]*x=\")([-\d.]+)"
+                       (fn [[_ prefix x-val]]
+                         (let [x (Double/parseDouble x-val)]
+                           (str prefix (+ x shift)))))
+          ;; Update first-line tspans as well, since generated labels may carry x
+          ;; on the tspan instead of inheriting from the text node.
+          (str/replace #"(<tspan[^>]*x=\")([-\d.]+)"
+                       (fn [[_ prefix x-val]]
+                         (let [x (Double/parseDouble x-val)]
+                           (str prefix (+ x shift)))))))
+    svg-string))
 
 (defn set-macos-dock-icon! []
   (when (and (.startsWith (System/getProperty "os.name" "") "Mac")
@@ -76,6 +83,7 @@
                                         (svg/make-urls-absolute base-path)
                                         svg/hickory->svg-string
                                         svg-viewer/strip-script
+                                        fix-svg-text-positioning
                                         svg-viewer/normalize-svg-for-fx
                                         svg-viewer/inline-css-vars)])
                                svgs))]
