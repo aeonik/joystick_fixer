@@ -58,6 +58,7 @@
                                 aeonik.controlmap.index
                                 aeonik.controlmap.state
                                 aeonik.controlmap.gui
+                                aeonik.controlmap.gui.main
                                 aeonik.controlmap.svg]})
 
   ;; Step 3: build the jar
@@ -65,7 +66,7 @@
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main 'aeonik.controlmap.gui})
+           :main 'aeonik.controlmap.gui.main})
   (create-windows-launcher)
   (zip-artifacts nil)
 
