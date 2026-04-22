@@ -209,14 +209,16 @@
 ;; Get the renderer from your main GUI
 ;; (def renderer (aeonik.controlmap.gui.main/renderer))
 
-(defn debug-renderer
-  "Debug function to see what the renderer actually is"
-  []
-  (let [renderer-obj (aeonik.controlmap.gui.main/renderer)]
-    (println "Renderer type:" (type renderer-obj))
-    (println "Renderer value:" renderer-obj)
-    (println "Is callable?" (try (renderer-obj) :yes (catch Exception e :no)))
-    renderer-obj))
+(comment (defn debug-renderer
+           "Debug function to see what the renderer actually is"
+           []
+           (if-let [renderer-var (resolve 'aeonik.controlmap.gui.main/renderer)]
+             (let [renderer-obj @renderer-var]
+               (println "Renderer type:" (type renderer-obj))
+               (println "Renderer value:" renderer-obj)
+               (println "Is callable?" (try (renderer-obj) :yes (catch Exception e :no)))
+               renderer-obj)
+             (println "Renderer var not found"))))
 
 ;; For interactive development with cljfx
 (comment
@@ -227,7 +229,8 @@
   (main/start!)
 
   ;; Step 3: To refresh the GUI after changing any view functions, just call:
-  (main/renderer)
+  (when-let [renderer-var (resolve 'aeonik.controlmap.gui.main/renderer)]
+    (@renderer-var))
 
   ;; The renderer object can be called with no args to trigger a refresh
   ;; This is exactly how the cljfx interactive development example works
