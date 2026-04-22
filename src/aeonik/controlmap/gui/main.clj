@@ -130,6 +130,12 @@
 
 (defn map-event-handler [event]
   (case (:event/type event)
+    ::shutdown (fn [state]
+                 ;; In the packaged app, relying on implicit exit alone has proven
+                 ;; unreliable. Explicitly terminate the JavaFX toolkit when the
+                 ;; main window receives a close request.
+                 (Platform/exit)
+                 state)
     ::set-status (fn [state]
                    (let [^WebEvent we (:fx/event event)
                          msg (.getData we)]
@@ -296,6 +302,7 @@
 (defn root-view [state]
   {:fx/type :stage
    :showing true
+   :on-close-request {:event/type ::shutdown}
    :title (format "Control Mapper - Instance %s" (or (:active-instance state) "None"))
    :width 1400
    :height 900
@@ -326,6 +333,10 @@
             (swap! *state (map-event-handler event)))}))
 
 (defn start! []
+  ;; cljfx initializes JavaFX with implicit exit disabled for REPL friendliness.
+  ;; Re-enable it here so closing the last window shuts the toolkit down even
+  ;; when callers invoke `start!` directly instead of going through `-main`.
+  (Platform/setImplicitExit true)
   (fx/mount-renderer *state renderer)
   (set-macos-dock-icon!)
   (println "✓ GUI started"))
@@ -340,7 +351,6 @@
   (start!))
 
 (defn -main [& _]
-  (Platform/setImplicitExit true)
   (start!))
 
 (comment
