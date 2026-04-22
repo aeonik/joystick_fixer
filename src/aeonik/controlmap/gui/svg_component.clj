@@ -2,6 +2,7 @@
   "Production-ready idiomatic cljfx SVG component"
   (:require
    [aeonik.controlmap.gui.fx-util :as fxu]
+   [aeonik.controlmap.gui.svg-viewer :as svg-viewer]
    [cljfx.api :as fx]
    [cljfx.lifecycle :as lifecycle]
    [clojure.java.io :as io]
@@ -56,7 +57,11 @@
 
 (defn- load-svg-image ^SVGImage [^String svg]
   ;; if you pass in SVG text
-  (load-svg-content svg))
+  (doto (load-svg-content svg)
+    ;; JavaFX SVG rendering does not consistently honor the transparent CSS used
+    ;; by our overlay button rectangles, which makes them show up as black boxes.
+    ;; Apply the same post-load fix used by the older svg-viewer path.
+    (svg-viewer/make-buttons-transparent!)))
 
 ;; or, if your prop is a path/URL:
 #_(defn- load-svg-image ^SVGImage [source]
@@ -124,12 +129,12 @@
     (.requestLayout pane)))
 
 (defn- make-pane []
-  (let [state (atom {:svg nil
-                     :svg-image nil
-                     :dims {:w 1000.0 :h 1000.0}
-                     :mode :contain
-                     :root (javafx.scene.Group.)
-                     :scale-xf (javafx.scene.transform.Scale. 1.0 1.0 0.0 0.0)}) ; sx,sy,pivot(0,0)
+  (let [state  (atom {:svg nil
+                      :svg-image nil
+                      :dims {:w 1000.0 :h 1000.0}
+                      :mode :contain
+                      :root (javafx.scene.Group.)
+                      :scale-xf (javafx.scene.transform.Scale. 1.0 1.0 0.0 0.0)}) ; sx,sy,pivot(0,0)
         pane  (proxy [Pane] []
                 (isResizable [] true)
                 (getContentBias [] Orientation/HORIZONTAL)
