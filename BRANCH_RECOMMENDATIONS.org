@@ -1,0 +1,230 @@
+#+title: Branch Recommendations
+
+* Summary
+
+This note records the current branch assessment and recommended next steps for
+the repository. The core issue is that several different lines of work were
+advanced in parallel and partially overlapped:
+
+- a stable GUI application
+- a native JavaFX SVG renderer migration
+- XML/controlmap roundtrip experimentation
+- packaging and standalone jar fixes
+
+Those goals are individually reasonable, but the repository history shows that
+they were not sequenced cleanly.
+
+* Main Recommendation
+
+Use commit =bb031ef= as the behavioral baseline for the GUI, then build a new
+stabilization branch from there.
+
+Suggested branch model:
+
+- =product/webview-stable=
+  Start from =bb031ef=
+  Purpose: stable GUI baseline that preserves known-good behavior
+- =research/native-svg=
+  Continue from =gui-refactor= only as an experiment
+  Purpose: prove native JavaFX SVG rendering can match browser/WebView behavior
+- =research/xml-roundtrip=
+  Use =stateless= or =sandbox/statefull= as parser/roundtrip research branches
+  Purpose: XML transformation and roundtrip experimentation, separate from GUI
+
+Do not continue treating =gui-refactor= as the production truth until the
+native renderer clearly matches the older WebView behavior.
+
+* Supporting Evidence
+
+** Last Coherent GUI State
+
+The strongest evidence for the last coherent GUI behavior is the detached HEAD
+state reconstructed from the terminal transcript:
+
+- before fetch: =HEAD detached at origin/sandbox/message-handling=
+- after fetch: =origin/sandbox/message-handling= moved from =bb031ef= to
+  =35324d0=
+- after fetch: =HEAD detached at bb031ef=
+
+This implies the actual checked out source state was =bb031ef=.
+
+Commit:
+
+- =bb031ef= :: Added implicit exit for proper termination of gui
+
+Behavioral significance:
+
+- still used the WebView-based message passing model
+- SVG assets were rendered in a browser-like environment
+- click events flowed back through =window.status= / =:on-status-changed=
+- matched the authoring assumptions of the SVG/CSS assets
+
+** Why bb031ef Matters
+
+The older GUI path in =src/aeonik/controlmap/gui.clj= used:
+
+- =cljfx.ext.web-view=
+- SVG content loaded as web content
+- browser-style DOM/script behavior
+- message passing via =window.status=
+
+That model is less elegant architecturally, but it is coherent. The authored
+SVGs rely on browser-like CSS and transform behavior, so the old rendering
+stack matches the assets more naturally.
+
+** sandbox/message-handling Was a Transition Branch
+
+The branch =sandbox/message-handling= is not just a sequence of bugfixes. It is
+an in-progress renderer migration.
+
+Important commits:
+
+- =e1a0b64= :: BUGGED: Added file-chooser dialog need: fix state
+- =3195eb4= :: Cleaned up state, refactored to use bb/fs
+- =8c35167= :: Attempting to convert from WebView to native cljfx
+- =35324d0= :: Fixed text scaling bug
+
+The clearest evidence is the commit message on =35324d0= itself:
+
+- "Still need to fix black rectangles and relative offsets."
+
+That means the latest tip of =sandbox/message-handling= was not yet a clean or
+finished replacement for the working older path.
+
+Technical evidence from the code:
+
+- mixed rendering strategies in =src/aeonik/controlmap/gui.clj=
+- experimental native SVG handling introduced alongside old WebView logic
+- multiple competing =instance-tab= definitions appeared during migration
+- state/path handling improved, but renderer behavior became less reliable
+
+Conclusion:
+
+- =sandbox/message-handling= should be treated as a transition branch, not the
+  canonical stable GUI baseline
+
+** gui-refactor Continued the Migration
+
+The =gui-refactor= branch continued the same renderer migration, but with much
+better namespace structure.
+
+Representative commits:
+
+- =42b5b22= :: Starting separation of gui components
+- =4f9ca3a= :: Wrapping svg library, no idea how this works
+- =ffc0c12= :: Fixed scaling issue again
+- =47c4b08= :: Integrated component into main gui
+
+Later commits on =gui-refactor= addressed fallout from that migration:
+
+- =55a2c6c= :: Fix GUI shutdown behavior
+- =d63ffca= :: Fix AOT compile failure in svg viewer helpers
+- =1de5d39= :: Fix standalone jar entrypoint
+- =2d32bf1= :: Fix black button overlays in SVG renderer
+- =63ef916= :: Fix SVG text positioning in JavaFX renderer
+
+Assessment:
+
+- architecture improved substantially
+- behavior regressed because the renderer model changed from browser/WebView to
+  native JavaFX SVG
+- the SVG assets still depend on browser-like CSS/transform semantics
+
+Conclusion:
+
+- =gui-refactor= is better structured code, but not the best production
+  baseline yet
+
+** XML Branches Are Separate Work
+
+The branches =stateless= and =sandbox/statefull= are not primarily GUI
+branches. They are XML/controlmap transformation experiments.
+
+Tips:
+
+- =stateless= -> =f16ec01= :: Creating XML Roundtrip for testing XML writes
+- =sandbox/statefull= -> =2766296= :: Enhancing XML Roundtrip
+
+These branches are better interpreted as:
+
+- parser/roundtrip research
+- XML write fidelity experiments
+- support work for future editing/transformation pipelines
+
+Assessment:
+
+- =stateless= is the cleaner, smaller experiment
+- =sandbox/statefull= is the broader, messier continuation
+- neither should currently be treated as the main GUI product line
+
+* Critique
+
+The repository history shows one recurring mistake:
+
+Architecture changes and rendering-model changes were performed together.
+
+The safer order would have been:
+
+1. split =gui.clj= into smaller namespaces without changing rendering behavior
+2. keep WebView as the production path
+3. add native SVG rendering behind an explicit experimental path or flag
+4. switch only after parity was demonstrated
+
+Instead, the code evolved by:
+
+- splitting namespaces
+- changing rendering technology
+- adjusting state/reload handling
+- fixing packaging/runtime issues
+
+all in overlapping commits. That made regressions harder to localize and left
+the repository with multiple partially-realized directions.
+
+* Concrete Recommendation
+
+Short-term direction:
+
+- use =bb031ef= as the stable GUI baseline
+- create a fresh stabilization branch from that commit
+- cherry-pick only clearly safe non-rendering fixes
+
+Safe candidates in principle:
+
+- standalone jar entrypoint fix
+- explicit shutdown/lifecycle fix
+- AOT/compile helper cleanup
+- path/reload improvements, if they do not change rendering semantics
+
+Do not cherry-pick by default:
+
+- native SVG renderer changes
+- fixes that only exist to compensate for JavaFX SVG incompatibilities
+- experimental GUI refactors that replace the WebView event model
+
+* Recommended Working Model
+
+Treat the repository as having three distinct efforts:
+
+- GUI Product
+  stable app behavior
+- Native SVG Renderer Research
+  renderer parity and event model experiments
+- XML Roundtrip Research
+  parser/write fidelity work
+
+Those efforts should not share a single "current truth" branch until they are
+better validated.
+
+* Bottom Line
+
+If a single answer is needed:
+
+- last known behaviorally coherent GUI state: =bb031ef=
+- latest GUI architecture experiment: =gui-refactor=
+- latest XML roundtrip experiment: =sandbox/statefull=
+- cleanest XML roundtrip spike: =stateless=
+
+For production progress, stabilize from =bb031ef=.
+For renderer research, keep =gui-refactor= experimental.
+For XML work, treat =stateless= / =sandbox/statefull= as separate research
+tracks.
